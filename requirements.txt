@@ -1,7 +1,9 @@
+# git+https://github.com/echedey-ls/pvlib-python.git@martin_ruiz_spectral_response_characterization
+pvlib
+
 matplotlib
 scipy
 numpy
 pandas
-pvlib
 numba
 ruff
