@@ -1,25 +1,26 @@
 """
-Correlation of usable / broadband spectrum irradiance against distinct variables
-================================================================================
+Ratio of usable / broadband spectrum irradiance numeric tools
+=============================================================
+This file includes:
+ * Integrate a spectrum. `calc_irrad_integrals`
+ * Get each of N. Martín et all ratios: `G_over_G_lambda` & `E_lambda_over_E`
 """
 
-from pvlib.spectrum import get_am15g, spectrl2
-import numba
+from pvlib.spectrum import get_am15g
 import numpy as np
 
 import functools
 
 
-lambda0 = {  # nm
+LAMBDA0 = {  # nm
     "monosi": 1100,
     "polysi": 1100,
     "asi": 800,
 }
 
 
-@numba.njit
 def calc_irrad_integrals(
-    wavelengths: np.array, irradiances: np.array, cutoff_wavelength: float
+    wavelengths: np.ndarray, irradiances: np.ndarray, cutoff_wavelength: float
 ):
     r"""
     From a spectrum of wavelengths and their irradiances, calculate
@@ -43,7 +44,8 @@ def calc_irrad_integrals(
     E_usable : float
         :math:`E_{\lambda_0 < \lambda}`
     """
-    # TODO: check behaviour -> should be prev or next index?
+    # TODO: optimize with numba? Currently can't do trapz(non-uniform dimensions)
+    # TODO: check behaviour -> maybe should be prev or next index?
     cutoff_lambda_index = np.searchsorted(wavelengths, cutoff_wavelength)
     E_lambda_le = np.trapz(
         irradiances[:cutoff_lambda_index], wavelengths[:cutoff_lambda_index]
@@ -56,15 +58,42 @@ def calc_irrad_integrals(
 
 @functools.lru_cache(maxsize=10, typed=False)
 def G_over_G_lambda(cutoff_nm: float):
+    r"""
+    Given a cutoff wavelength, get standard spectrum's ratio
+    :math:`\frac{G}{G_{\lambda_0 < \lambda}}`, given
+    :math:`G_{\lambda_0 < \lambda} = \int_{\lambda_min}^{\lambda_0} G(\lambda) d\lambda`
+    and :math:`G = \int_{\lambda_min}^{+\inf} G(\lambda) d\lambda`.
+
+    This function is cached by default.
+
+    Parameters
+    ----------
+    wavelengths : np.array
+        Indexes at which irradiances values are known, usually in nanometers, :math:`nm`.
+    irradiances : np.array
+        Irradiances values in :math:`\frac{W}{m^2 \cdot nm}`
+    cutoff_wavelength : float
+        Top wavelength where a PV material has non-zero effectiveness.
+
+    Returns
+    -------
+    G_fraction : float
+        :math:`\frac{G}{G_{\lambda_0 < \lambda}}`
+    """
     am15g = get_am15g()
-    stc_irradiances = am15g.array.to_numpy()
-    stc_nanometers = am15g.index.to_numpy()
-    stc_complete_integ, stc_usable_integ = calc_irrad_integrals(
-        stc_nanometers, stc_irradiances, cutoff_nm
+    G_irradiances = am15g.array.to_numpy()
+    G_nanometers = am15g.index.to_numpy()
+    G_complete_integ, G_usable_integ = calc_irrad_integrals(
+        G_nanometers, G_irradiances, cutoff_nm
     )
-    return (stc_complete_integ, stc_usable_integ)
+    return G_complete_integ / G_usable_integ
 
 
-def E_lambda_over_E(cutoff_nm: float):
-    spectrl2()
-    pass
+def E_lambda_over_E(cutoff_nm: float, wavelengths: np.ndarray, irradiances: np.ndarray):
+    """
+    Same as above, but for the :math:`\frac{E_{\lambda_0 < \lambda}}{E}` ratio.
+    """  # E_λ<λ₀/E
+    E_complete_integ, E_usable_integ = calc_irrad_integrals(
+        wavelengths, irradiances, cutoff_nm
+    )
+    return E_usable_integ / E_complete_integ
