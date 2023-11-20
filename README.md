@@ -9,7 +9,7 @@ PS = 1 - \frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}\frac{E_{\lambda<\lambda
 ```
 
 In this repo, I will be working in a first modelling of
-$`\frac{E_{\lambda<\lambda_0}{E}`$.
+$`\frac{E_{\lambda<\lambda_0}}{E}`$
 
 
 Available workflows
