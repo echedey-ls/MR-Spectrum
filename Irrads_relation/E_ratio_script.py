@@ -13,7 +13,7 @@ from irrads_relation_fracs import LAMBDA0
 
 # Matrix of values to test
 # Atmosphere characterization required params
-N = 4
+N = 3
 spectrl2_generator_input = {
     # Wikipedia cites range 870 to 1085 hPa
     "surface_pressure": np.linspace(870.0, 1085.0, N) * 100,  # Pa
@@ -29,8 +29,10 @@ bench = MR_E_ratio()  # default values for a start
 # Test with monosi/polysi cutoff wavelength
 bench.cutoff_lambda = LAMBDA0["monosi"]  # == polysi
 bench.simulate_from_product(**spectrl2_generator_input)
+bench.plot_results()
 
 # %%
 # Test with asi cutoff wavelength
 bench.cutoff_lambda = LAMBDA0["asi"]
 bench.simulate_from_product(**spectrl2_generator_input)
+bench.plot_results()
