@@ -12,3 +12,9 @@ To be used with N. Martín and J. M. Ruiz spectral mismatch factor. From Nuria's
 
 In this repo, I will be working in a first modelling of
 :math:`\frac{E_{\lambda<\lambda_0}{E}`.
+
+
+Available workflows
+-------------------
+
+1. ``Irrads_relation/E_ratio_script.py``
