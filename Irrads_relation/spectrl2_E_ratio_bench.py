@@ -7,7 +7,7 @@ See :class:`MR_E_ratio` for more details.
 
 # Imports
 from irrads_relation_fracs import E_lambda_over_E, LAMBDA0
-from tools import _get_optional_params
+from tools import _get_optional_params, day_of_year
 
 from pvlib.spectrum import spectrl2
 from pvlib.irradiance import aoi
@@ -31,6 +31,7 @@ class MR_E_ratio:
         """
         Allow for initialization
         """
+        self.reset_simulation_state()
         params = _get_optional_params(self.init_values)
         self.init_values(
             cutoff_lambda=cutoff_lambda,
@@ -87,7 +88,9 @@ class MR_E_ratio:
             self.datetimes = pd.date_range(
                 "2023-11-22T04",
                 "2023-11-27T22",
-                freq=pd.Timedelta(hours=0.5),  # unit="s" TODO: report to PVLIB?
+                freq=pd.Timedelta(
+                    hours=0.5
+                ),  # unit="s" bugs this TODO?: report to PVLIB
             )
 
     def reset_simulation_state(self):
@@ -125,7 +128,7 @@ class MR_E_ratio:
             ],
             "dayofyear": None,  # np.array(map(day_of_year, datetimes)) ???
             # ref. assumes from 0.31 to 0.3444 atm-cm & ozone does not have much impact
-            # in spectra, so we are excluding it for now
+            # in spectra, so we are excluding it
             "ozone": self.ozone,
         }
 
@@ -144,10 +147,19 @@ class MR_E_ratio:
           * alpha=1.14
           * wavelength_variation_factor=0.095
           * aerosol_asymmetry_factor=0.65
+
+        Saves results to a dataframe with the following shape:
+          ================= =====================
+          ... inputvals ... ... zenith values ...
+          ================= =====================
+          parameter values    E_λ<λ₀/E values
+          ================= =====================
         """
-        self.input_keys = inputvals.keys()
         # Initialize needed values, in case they were changed from the outside
         self.simulation_prerun()
+
+        self.input_keys = (*inputvals.keys(),)
+
         # Simulation results, save an entry for each of the cartesian product
         self.results = pd.DataFrame(
             columns=(*self.input_keys, *self.time_params["apparent_zenith"]),
