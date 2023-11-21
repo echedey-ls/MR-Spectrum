@@ -42,5 +42,4 @@ References
 
 [1] N. Martín and J. M. Ruiz, ‘A new method for the spectral characterisation of PV modules’,
     Progress in Photovoltaics: Research and Applications, vol. 7, no. 4, pp. 299–310, 1999,
-    [doi: 10.1002/(SICI)1099-159X(199907/08)7:4<299::AID-PIP260>3.0.CO;2-0]
-    (doi.org/10.1002/(SICI)1099-159X(199907/08)7:4<299::AID-PIP260>3.0.CO;2-0).
+    [doi: 10.1002/(SICI)1099-159X(199907/08)7:4<299::AID-PIP260>3.0.CO;2-0](doi.org/10.1002/(SICI)1099-159X(199907/08)7:4<299::AID-PIP260>3.0.CO;2-0).
