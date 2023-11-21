@@ -9,7 +9,7 @@ Silicon-based PV cell technologies.
 import numpy as np
 
 from spectrl2_E_ratio_bench import MR_E_ratio
-from irrads_relation_fracs import LAMBDA0
+from irradiance_ratios import LAMBDA0
 
 # Matrix of values to test
 # Atmosphere characterization required params

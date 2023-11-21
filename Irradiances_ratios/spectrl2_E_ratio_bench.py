@@ -6,7 +6,7 @@ See :class:`MR_E_ratio` for more details.
 """
 
 # Imports
-from irrads_relation_fracs import E_lambda_over_E, LAMBDA0
+from irradiance_ratios import E_lambda_over_E, LAMBDA0
 from tools import _get_optional_params, day_of_year
 
 from pvlib.spectrum import spectrl2

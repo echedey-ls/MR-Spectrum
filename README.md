@@ -14,20 +14,20 @@ where:
  * $`E_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} E(\lambda) d\lambda`$
  * $`\bar{G} = \int_{\lambda_{min}}^{+\infty} G(\lambda) d\lambda`$
  * $`\bar{G}_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} G(\lambda) d\lambda`$
+ * $`G`$ represents the standard (STC) spectrum
 
 In this repo, I will be working on a first modelling of
-$`\frac{E_{\lambda<\lambda_0}}{E}`$, which is a relation of usable spectrum against
+$`\frac{E_{\lambda<\lambda_0}}{E}`$, which is the ratio of usable spectrum against
 all incident spectrum. By *usable* we mean the wavelength until a PV material has
 at least some effectiveness at converting irradiance into current.
 
 For example, for `c-Si` it is around $`1100 nm`$ and for `a-Si`, around $`800 nm`$.
 See *Figure 3* in [1].
 
-Also, calculation of $`\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}`$ is available through
-``G_over_G_lambda(cutoff_wavelength)`` in ``Irrads_relation/irrads_relation_fracs.py``,
-where $`\bar{G}`$ is the standard (STC) spectrum.
+Also, ratio $`\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}`$ is available through
+``G_over_G_lambda(cutoff_wavelength)`` in ``Irrads_relation/irradiance_ratios.py``.
 
-$`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}`$ was already modelled in
+$`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}`$ is already modelled in
 [1].
 
 
