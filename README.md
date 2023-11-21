@@ -10,9 +10,9 @@ PS = 1 - \frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}\frac{E_{\lambda<\lambda
 
 where:
 
- * $`E = \int_{\lambda_{min}}^{+\inf} E(\lambda) d\lambda`$
+ * $`E = \int_{\lambda_{min}}^{+\infty} E(\lambda) d\lambda`$
  * $`E_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} E(\lambda) d\lambda`$
- * $`\bar{G} = \int_{\lambda_{min}}^{+\inf} G(\lambda) d\lambda`$
+ * $`\bar{G} = \int_{\lambda_{min}}^{+\infty} G(\lambda) d\lambda`$
  * $`\bar{G}_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} G(\lambda) d\lambda`$
 
 In this repo, I will be working on a first modelling of

@@ -25,7 +25,7 @@ def calc_irrad_integrals(
     r"""
     From a spectrum of wavelengths and their irradiances, calculate
     :math:`E_{\lambda_0 < \lambda} = \int_{\lambda_min}^{\lambda_0} E(\lambda) d\lambda`
-    and :math:`E = \int_{\lambda_min}^{+\inf} E(\lambda) d\lambda`.
+    and :math:`E = \int_{\lambda_min}^{+\infty} E(\lambda) d\lambda`.
     This function is optimized by numba.
 
     Parameters
@@ -62,7 +62,7 @@ def G_over_G_lambda(cutoff_nm: float):
     Given a cutoff wavelength, get standard spectrum's ratio
     :math:`\frac{\bar{G}}{\bar{G}_{\lambda_0 < \lambda}}`, given
     :math:`\bar{G}_{\lambda_0 < \lambda} = \int_{\lambda_{min}}^{\lambda_0} G(\lambda)
-    d\lambda` and :math:`\bar{G} = \int_{\lambda_{min}}^{+\inf} G(\lambda) d\lambda`.
+    d\lambda` and :math:`\bar{G} = \int_{\lambda_{min}}^{+\infty} G(\lambda) d\lambda`.
 
     This function is cached by default.
 
