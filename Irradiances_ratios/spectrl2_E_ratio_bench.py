@@ -255,7 +255,7 @@ class MR_E_ratio:
         axs = axs.flatten()
         fig.suptitle(
             r"$\frac{E_{λ<λ_0}}{E}$ as function of SPECTRL2 inputs"
-            + f"\nλ={self.cutoff_lambda} nm"
+            + f"\nλ₀={self.cutoff_lambda} nm"
         )
         fig.set_size_inches(12, 12)
 

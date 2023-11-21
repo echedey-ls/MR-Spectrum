@@ -1,1 +1,2 @@
-+ time executions
++ MR spectrum PVLIB's PR
++ Regresión y generación modelos
