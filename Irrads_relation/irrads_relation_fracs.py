@@ -60,9 +60,9 @@ def calc_irrad_integrals(
 def G_over_G_lambda(cutoff_nm: float):
     r"""
     Given a cutoff wavelength, get standard spectrum's ratio
-    :math:`\frac{G}{G_{\lambda_0 < \lambda}}`, given
-    :math:`G_{\lambda_0 < \lambda} = \int_{\lambda_min}^{\lambda_0} G(\lambda) d\lambda`
-    and :math:`G = \int_{\lambda_min}^{+\inf} G(\lambda) d\lambda`.
+    :math:`\frac{\bar{G}}{\bar{G}_{\lambda_0 < \lambda}}`, given
+    :math:`\bar{G}_{\lambda_0 < \lambda} = \int_{\lambda_min}^{\lambda_0} G(\lambda)
+    d\lambda` and :math:`\bar{G} = \int_{\lambda_min}^{+\inf} G(\lambda) d\lambda`.
 
     This function is cached by default.
 
@@ -78,7 +78,7 @@ def G_over_G_lambda(cutoff_nm: float):
     Returns
     -------
     G_fraction : float
-        :math:`\frac{G}{G_{\lambda_0 < \lambda}}`
+        :math:`\frac{\bar{G}}{\bar{G}_{\lambda_0 < \lambda}}`
     """
     am15g = get_am15g()
     G_irradiances = am15g.array.to_numpy()
