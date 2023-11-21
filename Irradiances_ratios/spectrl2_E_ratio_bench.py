@@ -20,6 +20,7 @@ from itertools import product
 from functools import partial
 from warnings import warn
 from datetime import datetime
+from time import time
 
 
 class MR_E_ratio:
@@ -104,11 +105,19 @@ class MR_E_ratio:
         self.time_params = None
         self.input_keys = None
         self.results = None
+        self.times = dict()
+    
+    def times_summary(self):
+        print("Timing of bench methods:")
+        for key, value in self.times.items():
+            if value:
+                print(f"\t{key}: {value} s")
 
     def simulation_prerun(self):
         """
         Calculates some values from scratch, in case they were updated from the outside
         """
+        start_time = time()  # Initialize start time of block
         self.fixed_params = {
             "surface_tilt": self.surface_tilt,  # degrees
             "ground_albedo": 0.25,  # concrete pavement
@@ -134,6 +143,7 @@ class MR_E_ratio:
             # in spectra, so we are excluding it
             "ozone": self.ozone,
         }
+        self.times["simulation_prerun"] = time() - start_time
 
     def simulate_from_product(self, **inputvals):
         """
@@ -160,6 +170,9 @@ class MR_E_ratio:
         """
         # Initialize needed values, in case they were changed from the outside
         self.simulation_prerun()
+
+        # Start timer after prerun
+        start_time = time()  # Initialize start time of block
 
         self.input_keys = (*inputvals.keys(),)
 
@@ -190,6 +203,8 @@ class MR_E_ratio:
                     spectrl2_result["poa_global"].swapaxes(1, 0),
                 ),
             ]
+        
+        self.times["simulate_from_product"] = time() - start_time
 
         self.simulation_post()
 
@@ -197,7 +212,9 @@ class MR_E_ratio:
         """
         Run tasks after simulation processing
         """
+        start_time = time()  # Initialize start time of block
         self.post_summary()
+        self.times["simulation_post"] = time() - start_time
 
     def post_summary(self):
         """
@@ -222,6 +239,7 @@ class MR_E_ratio:
         Optionally, a set of variables can be specified via parameter 'plot_keys: set'.
         Defaults to plot all available.
         """
+        start_time = time()  # Initialize start time of block
         if plot_keys is None:  # default to add apparent zenith
             plot_keys = {"apparent_zenith", *self.input_keys}
         elif isinstance(plot_keys, str):
@@ -267,3 +285,5 @@ class MR_E_ratio:
                 f"E_ratio_lambda{self.cutoff_lambda}_"
                 + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
             )
+
+        self.times["plot_results"] = time() - start_time

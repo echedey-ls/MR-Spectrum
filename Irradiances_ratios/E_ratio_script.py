@@ -30,9 +30,12 @@ bench = MR_E_ratio()  # default values for a start
 bench.cutoff_lambda = LAMBDA0["monosi"]  # == polysi
 bench.simulate_from_product(**spectrl2_generator_input)
 bench.plot_results()
+bench.times_summary()
 
 # %%
 # Test with asi cutoff wavelength
+bench.reset_simulation_state()
 bench.cutoff_lambda = LAMBDA0["asi"]
 bench.simulate_from_product(**spectrl2_generator_input)
 bench.plot_results()
+bench.times_summary()
