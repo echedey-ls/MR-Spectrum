@@ -8,8 +8,8 @@ To be used with N. Martín and J. M. Ruiz spectral mismatch factor. From Nuria's
 PS = 1 - \frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}\frac{E_{\lambda<\lambda_0}}{\bar{G}_{\lambda<\lambda_0}}\frac{\bar{G}}{E}
 ```
 
-where $`E_{\lambda<\lambda_0} = \int_{\lambda_min}^{\lambda_0} E(\lambda) d\lambda`$
-and $`\bar{G}_{\lambda<\lambda_0} = \int_{\lambda_min}^{\lambda_0} G(\lambda) d\lambda`$
+where $`E_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} E(\lambda) d\lambda`$
+and $`\bar{G}_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} G(\lambda) d\lambda`$
 
 In this repo, I will be working on a first modelling of
 $`\frac{E_{\lambda<\lambda_0}}{E}`$, which is a relation of usable spectrum against
