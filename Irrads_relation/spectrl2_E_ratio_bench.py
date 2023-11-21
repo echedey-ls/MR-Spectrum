@@ -231,13 +231,13 @@ class MR_E_ratio:
 
         # assume we've got an iterable of strings
         # make at most two columns
-        cols = min(2, len(plot_keys))
+        cols = min(max_cols, len(plot_keys))
         rows = int(np.ceil(len(plot_keys) / cols))
         fig, axs = plt.subplots(ncols=cols, nrows=rows)
         axs = axs.flatten()
         fig.suptitle(
             r"$\frac{E_{λ<λ_0}}{E}$ as function of SPECTRL2 inputs"
-            + f"\nλ={self.cutoff_lambda}nm"
+            + f"\nλ={self.cutoff_lambda} nm"
         )
         fig.set_size_inches(12, 12)
 
