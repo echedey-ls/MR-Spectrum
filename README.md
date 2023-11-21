@@ -25,7 +25,7 @@ For example, for `c-Si` it is around $`1100 nm`$ and for `a-Si`, around $`800 nm
 See *Figure 3* in [1].
 
 Also, ratio $`\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}`$ is available through
-``G_over_G_lambda(cutoff_wavelength)`` in ``Irrads_relation/irradiance_ratios.py``.
+``G_over_G_lambda(cutoff_wavelength)`` in ``Irradiance_ratios/irradiance_ratios.py``.
 
 $`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}`$ is already modelled in
 [1].
@@ -34,7 +34,7 @@ $`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}`$ is already modelled in
 Available workflows
 -------------------
 
-1. ``Irrads_relation/E_ratio_script.py``: plots $`\frac{E_{\lambda<\lambda_0}}{E}`$
+1. ``Irradiance_ratios/E_ratio_script.py``: plots $`\frac{E_{\lambda<\lambda_0}}{E}`$
 against SPECTRL2 inputs and time-dependant inputs.
 
 References
