@@ -13,9 +13,9 @@ import functools
 
 
 LAMBDA0 = {  # nm
-    "monosi": 1100,
-    "polysi": 1100,
-    "asi": 800,
+    "monosi": 1100.0,
+    "polysi": 1100.0,
+    "asi": 800.0,
 }
 
 

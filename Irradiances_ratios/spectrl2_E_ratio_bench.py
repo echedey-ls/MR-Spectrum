@@ -88,10 +88,10 @@ class MR_E_ratio:
             self.datetimes = dates
         else:
             self.datetimes = pd.date_range(
-                "2023-11-22T04",
+                "2023-11-27T04",
                 "2023-11-27T22",
                 freq=pd.Timedelta(
-                    hours=0.5
+                    minutes=5
                 ),  # unit="s" bugs this TODO?: report to PVLIB
             )
 
@@ -105,11 +105,11 @@ class MR_E_ratio:
         self.time_params = None
         self.input_keys = None
         self.results = None
-        self.times = dict()
-    
+        self.processing_time = dict()
+
     def times_summary(self):
         print("Timing of bench methods:")
-        for key, value in self.times.items():
+        for key, value in self.processing_time.items():
             if value:
                 print(f"\t{key}: {value} s")
 
@@ -118,9 +118,12 @@ class MR_E_ratio:
         Calculates some values from scratch, in case they were updated from the outside
         """
         start_time = time()  # Initialize start time of block
-        self.fixed_params = {
+        self.constant_params = {
             "surface_tilt": self.surface_tilt,  # degrees
             "ground_albedo": 0.25,  # concrete pavement
+            # ref. assumes from 0.31 to 0.3444 atm-cm & ozone does not have much impact
+            # in spectra for Silicon (c-Si, a-Si) devices, so we are excluding it
+            "ozone": self.ozone,
         }
         # Time-dependant values
         self.solpos = self.locus.get_solarposition(self.datetimes)
@@ -133,21 +136,18 @@ class MR_E_ratio:
         self.time_params = {
             "apparent_zenith": self.solpos["apparent_zenith"],
             "aoi": self.aoi,
-            "relative_airmass": self.locus.get_airmass(self.datetimes, self.solpos)[
+            "relative_airmass": self.locus.get_airmass(solar_position=self.solpos)[
                 "airmass_relative"
             ],
             "dayofyear": np.fromiter(
                 map(day_of_year, self.datetimes), dtype=np.float64
             ),
-            # ref. assumes from 0.31 to 0.3444 atm-cm & ozone does not have much impact
-            # in spectra, so we are excluding it
-            "ozone": self.ozone,
         }
-        self.times["simulation_prerun"] = time() - start_time
+        self.processing_time["simulation_prerun"] = time() - start_time
 
     def simulate_from_product(self, **inputvals):
         """
-        Process a simulation from inputvals.
+        Process a simulation from **inputvals.
 
         inputvals are keyword arguments, numpy 1-d arrays.
         It must contain spectrl2 required parameters:
@@ -189,7 +189,7 @@ class MR_E_ratio:
             # 'poa_ground_diffuse', 'poa_direct', 'poa_global'
             spectrl2_result = spectrl2(
                 **product_input,
-                **self.fixed_params,
+                **self.constant_params,
                 **self.time_params,
             )
             self.results.iloc[index] = [
@@ -203,8 +203,8 @@ class MR_E_ratio:
                     spectrl2_result["poa_global"].swapaxes(1, 0),
                 ),
             ]
-        
-        self.times["simulate_from_product"] = time() - start_time
+
+        self.processing_time["simulate_from_product"] = time() - start_time
 
         self.simulation_post()
 
@@ -214,7 +214,7 @@ class MR_E_ratio:
         """
         start_time = time()  # Initialize start time of block
         self.post_summary()
-        self.times["simulation_post"] = time() - start_time
+        self.processing_time["simulation_post"] = time() - start_time
 
     def post_summary(self):
         """
@@ -224,7 +224,7 @@ class MR_E_ratio:
         means = self.results.iloc[:, n_inputs:].mean().dropna()
         # stdvs = self.results.iloc[:, n_inputs:].std().dropna()
         print("Simulation Results")
-        print(f"> Cutoff wavelength: {self.cutoff_lambda}")
+        print(f"> Cutoff wavelength: {self.cutoff_lambda} nm")
         print(f"> Mean E_λ<λ₀/E = {means.mean()}")
         # print(f"Zenith\t Mean of avg(E_λ<λ₀/E)\n{means}")
         print(f"> Std  E_λ<λ₀/E = {means.std()}")
@@ -247,12 +247,28 @@ class MR_E_ratio:
                 plot_keys,
             }  # cast to set
 
+        # variable guard: only allow valid keys, from self.input_keys & self.time_params
+        allowed_keys = set(self.input_keys) | self.time_params.keys()
+        invalid_keys = plot_keys - allowed_keys
+        if invalid_keys == {}:
+            raise ValueError(
+                "Incorrect key provided.\n"
+                + f"Allowed keys are: {allowed_keys}\n"
+                + f"Invalid keys are: {invalid_keys}"
+            )
+        del allowed_keys, invalid_keys
+
         # assume we've got an iterable of strings
         # make at most two columns
         cols = min(max_cols, len(plot_keys))
         rows = int(np.ceil(len(plot_keys) / cols))
         fig, axs = plt.subplots(ncols=cols, nrows=rows)
-        axs = axs.flatten()
+
+        if isinstance(axs, np.ndarray):  # to allow iteration in one dimension
+            axs = axs.flatten()
+        else:  # plt.Axes type
+            axs = [axs]  # to allow iteration of just that element
+
         fig.suptitle(
             r"$\frac{E_{λ<λ_0}}{E}$ as function of SPECTRL2 inputs"
             + f"\nλ₀={self.cutoff_lambda} nm"
@@ -262,17 +278,19 @@ class MR_E_ratio:
         # number of inputs from user: n-left-most columns
         n_inputs = len(self.input_keys)
 
-        # treatment of special case: apparent zenith in plot_keys
-        var_name = "apparent_zenith"
-        if var_name in plot_keys:
-            ax = axs[-1]  # this does not interfere with later iterating of axs
+        # for each axes, plot a relationship
+        # Case: time-dependant variables in plot_keys
+        for ax, var_name in zip(
+            axs[::-1],  # from last to first, so it doesn't clash with generator keys
+            plot_keys.intersection(self.time_params.keys()),
+        ):
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
-            x = self.results.columns[n_inputs:]
-            for _, row in self.results.iterrows():
+            x = self.time_params[var_name]
+            for _, row in self.results.iloc[n_inputs:].iterrows():
                 ax.scatter(x, row[n_inputs:])
             plot_keys.remove(var_name)
 
-        # for each axes, plot a relationship
+        # Case: SPECTRL2 generator input parameters
         for ax, var_name in zip(axs, plot_keys):
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
             x = self.results[var_name]
@@ -282,8 +300,9 @@ class MR_E_ratio:
 
         if savefig:
             fig.savefig(
-                f"E_ratio_lambda{self.cutoff_lambda}_"
+                f"E_ratio_lambda{self.cutoff_lambda:04.0f}_"
                 + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+                + ".png"
             )
 
-        self.times["plot_results"] = time() - start_time
+        self.processing_time["plot_results"] = time() - start_time

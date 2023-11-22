@@ -6,10 +6,12 @@ Silicon-based PV cell technologies.
 """
 
 # %% Initialization
-import numpy as np
-
 from spectrl2_E_ratio_bench import MR_E_ratio
 from irradiance_ratios import LAMBDA0
+
+import numpy as np
+
+from datetime import datetime
 
 # Matrix of values to test
 # Atmosphere characterization required params
@@ -23,13 +25,16 @@ spectrl2_generator_input = {
     "aerosol_turbidity_500nm": np.linspace(0.08, 0.30, N),
 }
 
+# what do we want to plot E_λ<λ₀/E against? (None = default behaviour)
+plot_keys = None
+
 bench = MR_E_ratio()  # default values for a start
 
 # %%
 # Test with monosi/polysi cutoff wavelength
 bench.cutoff_lambda = LAMBDA0["monosi"]  # == polysi
 bench.simulate_from_product(**spectrl2_generator_input)
-bench.plot_results()
+bench.plot_results(plot_keys=plot_keys)
 bench.times_summary()
 
 # %%
@@ -37,5 +42,12 @@ bench.times_summary()
 bench.reset_simulation_state()
 bench.cutoff_lambda = LAMBDA0["asi"]
 bench.simulate_from_product(**spectrl2_generator_input)
-bench.plot_results()
+bench.plot_results(plot_keys=plot_keys)
 bench.times_summary()
+
+# %%
+# bench.results.to_csv(
+#     f"E_ratio_lambda{bench.cutoff_lambda:04.0f}_"
+#     + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+#     + ".csv"
+# )
