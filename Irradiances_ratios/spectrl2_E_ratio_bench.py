@@ -162,11 +162,11 @@ class MR_E_ratio:
           * aerosol_asymmetry_factor=0.65
 
         Saves results to a dataframe with the following shape:
-          ================= =====================
-          ... inputvals ... ... zenith values ...
-          ================= =====================
-          parameter values    E_λ<λ₀/E values
-          ================= =====================
+          ==================== ========================
+          ... input values ... ... datetimes values ...
+          ==================== ========================
+            parameter values        E_λ<λ₀/E values
+          ==================== ========================
         """
         # Initialize needed values, in case they were changed from the outside
         self.simulation_prerun()
@@ -178,7 +178,9 @@ class MR_E_ratio:
 
         # Simulation results, save an entry for each of the cartesian product
         self.results = pd.DataFrame(
-            columns=(*self.input_keys, *self.time_params["apparent_zenith"]),
+            # columns after *self.input_keys only represent a position in
+            # self.time_params
+            columns=(*self.input_keys, *self.datetimes),
             # pre-allocate to the length of the itertools.product result
             index=np.arange(np.prod([len(array) for array in inputvals.values()])),
             dtype=np.float64,
@@ -235,13 +237,13 @@ class MR_E_ratio:
     ) -> plt.Figure:
         """
         Generate a plot of 'E fraction' vs each input variable from
-        self.simulate_from_product(...) and 'apparent_zenith'.
+        self.simulate_from_product(...) and variable names at.
         Optionally, a set of variables can be specified via parameter 'plot_keys: set'.
-        Defaults to plot all available.
+        Defaults to plot all available and .
         """
         start_time = time()  # Initialize start time of block
-        if plot_keys is None:  # default to add apparent zenith
-            plot_keys = {"apparent_zenith", *self.input_keys}
+        if plot_keys is None:  # default to add relative_airmass
+            plot_keys = {"relative_airmass", *self.input_keys}
         elif isinstance(plot_keys, str):
             plot_keys = {
                 plot_keys,
