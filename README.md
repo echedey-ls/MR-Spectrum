@@ -22,13 +22,13 @@ all incident spectrum. By *usable* we mean the wavelength until a PV material ha
 at least some effectiveness at converting irradiance into current.
 
 For example, for `c-Si` it is around $`1100 nm`$ and for `a-Si`, around $`800 nm`$.
-See *Figure 3* in [1].
+See *Figure 3* in [[1]](#references).
 
 Also, ratio $`\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}`$ is available through
 ``G_over_G_lambda(cutoff_wavelength)`` in ``Irradiance_ratios/irradiance_ratios.py``.
 
 $`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}`$ is already modelled in
-[1].
+[[1]](#references).
 
 
 Available workflows
