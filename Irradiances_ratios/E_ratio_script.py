@@ -10,6 +10,7 @@ from spectrl2_E_ratio_bench import MR_E_ratio
 from irradiance_ratios import LAMBDA0
 
 import numpy as np
+import pandas as pd
 
 from datetime import datetime
 
@@ -26,9 +27,13 @@ spectrl2_generator_input = {
 }
 
 # what do we want to plot E_λ<λ₀/E against? (None = default behaviour)
-plot_keys = None
+plot_keys = "datetime"
 
-bench = MR_E_ratio()  # default values for a start
+bench = MR_E_ratio(
+    datetimes=pd.date_range(
+        "2023-11-27T00", "2023-11-28T00", freq=pd.Timedelta(minutes=1)
+    )
+)
 
 # %%
 # Test with monosi/polysi cutoff wavelength

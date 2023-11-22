@@ -7,7 +7,7 @@ See :class:`MR_E_ratio` for more details.
 
 # Imports
 from irradiance_ratios import E_lambda_over_E, LAMBDA0
-from tools import _get_optional_params, day_of_year
+from tools import day_of_year
 
 from pvlib.spectrum import spectrl2
 from pvlib.irradiance import aoi
@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 
 from itertools import product
 from functools import partial
-from warnings import warn
 from datetime import datetime
 from time import time
 
@@ -29,36 +28,21 @@ class MR_E_ratio:
     of input data, generate spectrums and integrate them.
     """
 
-    def __init__(self, cutoff_lambda: str | float = 0.0, **kwargs):
-        """
-        Allow for initialization
-        """
-        self.reset_simulation_state()
-        params = _get_optional_params(self.init_values)
-        self.init_values(
-            cutoff_lambda=cutoff_lambda,
-            **{
-                param: (kwargs.pop(param, None))
-                for param in params
-                if kwargs.get(param) is not None
-            },
-        )
-        if len(kwargs) > 0:
-            warn(
-                "Unused kwargs in bench!\n"
-                + "\n".join(f"\t{key}: {value}" for key, value in params)
-            )
-
-    def init_values(
+    def __init__(
         self,
-        cutoff_lambda: str | float,
+        cutoff_lambda: str | float = "monosi",
         n=20,
         location: Location = None,
-        dates: pd.DatetimeIndex = None,
+        datetimes: pd.DatetimeIndex = None,
         surface_tilt=31,
         surface_azimuth=180,
         ozone=0.31,
     ):
+        """
+        Create bench
+        """
+        self.reset_simulation_state()
+
         if isinstance(cutoff_lambda, float):
             self.cutoff_lambda = cutoff_lambda
         elif isinstance(cutoff_lambda, str):
@@ -84,8 +68,8 @@ class MR_E_ratio:
                 name="Madrid",
             )
 
-        if dates:
-            self.datetimes = dates
+        if datetimes is not None:
+            self.datetimes = datetimes
         else:
             self.datetimes = pd.date_range(
                 "2023-11-27T04",
@@ -249,8 +233,9 @@ class MR_E_ratio:
                 plot_keys,
             }  # cast to set
 
-        # variable guard: only allow valid keys, from self.input_keys & self.time_params
-        allowed_keys = set(self.input_keys) | self.time_params.keys()
+        # variable guard: only allow valid keys:
+        #   * self.input_keys & self.time_params
+        allowed_keys = set(self.input_keys) | self.time_params.keys() | {"datetime"}
         invalid_keys = plot_keys - allowed_keys
         if invalid_keys == {}:
             raise ValueError(
@@ -270,6 +255,7 @@ class MR_E_ratio:
             axs = axs.flatten()
         else:  # plt.Axes type
             axs = [axs]  # to allow iteration of just that element
+        axs = iter(axs)
 
         fig.suptitle(
             r"$\frac{E_{λ<λ_0}}{E}$ as function of SPECTRL2 inputs"
@@ -281,11 +267,16 @@ class MR_E_ratio:
         n_inputs = len(self.input_keys)
 
         # for each axes, plot a relationship
+        # Case: time
+        for ax, var_name in zip(axs, plot_keys.intersection({"datetime"})):
+            ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
+            x = self.datetimes if var_name == "datetime" else None
+            for _, row in self.results.iloc[n_inputs:].iterrows():
+                ax.scatter(x, row[n_inputs:])
+            plot_keys.remove(var_name)
+
         # Case: time-dependant variables in plot_keys
-        for ax, var_name in zip(
-            axs[::-1],  # from last to first, so it doesn't clash with generator keys
-            plot_keys.intersection(self.time_params.keys()),
-        ):
+        for ax, var_name in zip(axs, plot_keys.intersection(self.time_params.keys())):
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
             x = self.time_params[var_name]
             for _, row in self.results.iloc[n_inputs:].iterrows():
