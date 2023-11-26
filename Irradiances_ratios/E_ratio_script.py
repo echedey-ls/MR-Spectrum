@@ -11,8 +11,7 @@ from irradiance_ratios import LAMBDA0
 
 import numpy as np
 import pandas as pd
-
-from datetime import datetime
+# import matplotlib.pyplot as plt
 
 # Matrix of values to test
 # Atmosphere characterization required params
@@ -27,11 +26,21 @@ spectrl2_generator_input = {
 }
 
 # what do we want to plot E_λ<λ₀/E against? (None = default behaviour)
-plot_keys = "datetime"
+plot_keys = None
+
+# model function
+model_inputs = ["relative_airmass", "aerosol_turbidity_500nm"]
+p0 = None  # [0.2, 0.1]
+
+
+def model(xdata, c0, c1):  # use this func as model template
+    r_am, aod500 = xdata
+    return c0 * r_am + c1 * aod500
+
 
 bench = MR_E_ratio(
     datetimes=pd.date_range(
-        "2023-11-27T00", "2023-11-28T00", freq=pd.Timedelta(minutes=1)
+        "2023-11-27T00", "2023-11-28T00", freq=pd.Timedelta(minutes=15)
     )
 )
 
@@ -40,7 +49,12 @@ bench = MR_E_ratio(
 bench.cutoff_lambda = LAMBDA0["monosi"]  # == polysi
 bench.simulate_from_product(**spectrl2_generator_input)
 bench.plot_results(plot_keys=plot_keys)
+optim_result = bench.optimization_from_model(
+    model=model, model_inputs=model_inputs, p0=p0
+)
 bench.times_summary()
+
+# TODO: PLOT RESULTS & MODEL PREDICTION
 
 # %%
 # Test with asi cutoff wavelength
@@ -48,6 +62,7 @@ bench.reset_simulation_state()
 bench.cutoff_lambda = LAMBDA0["asi"]
 bench.simulate_from_product(**spectrl2_generator_input)
 bench.plot_results(plot_keys=plot_keys)
+bench.optimization_from_model(model=model, model_inputs=model_inputs, p0=p0)
 bench.times_summary()
 
 # %%

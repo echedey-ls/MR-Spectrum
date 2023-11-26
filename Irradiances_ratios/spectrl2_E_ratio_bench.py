@@ -15,11 +15,13 @@ from pvlib.location import Location
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
 from itertools import product
 from functools import partial
 from datetime import datetime
 from time import time
+from typing import Callable
 
 
 class MR_E_ratio:
@@ -118,11 +120,11 @@ class MR_E_ratio:
             self.solpos["azimuth"],
         )
         self.time_params = {
-            "apparent_zenith": self.solpos["apparent_zenith"],
-            "aoi": self.aoi,
+            "apparent_zenith": self.solpos["apparent_zenith"].to_numpy(),
+            "aoi": self.aoi.to_numpy(),
             "relative_airmass": self.locus.get_airmass(solar_position=self.solpos)[
                 "airmass_relative"
-            ],
+            ].to_numpy(),
             "dayofyear": np.fromiter(
                 map(day_of_year, self.datetimes), dtype=np.float64
             ),
@@ -306,3 +308,72 @@ class MR_E_ratio:
         plt.close()
 
         self.processing_time["plot_results"] = time() - start_time
+
+    def optimization_from_model(
+        self, model: Callable = None, model_inputs: tuple = None, **kwargs
+    ):
+        """
+        Optimize a model to fit generated data.
+
+        Parameters
+        ----------
+        model : Callable
+            Function with the model to be optimised.
+        model_inputs : str or iterable of str
+            Order and parameters of ``model``. Must be any of:
+                * ``datetime``
+                * ``apparent_zenith``, ``aoi``, ``relative_airmass`` or ``dayofyear``
+                * any parameter name provided to ``simulate_from_product``
+        **kwargs :
+            Redirected to ``scipy.optimize.curve_fit``.
+
+        Returns
+        -------
+        ``scipy.optimize.curve_fit``'s return values
+        """
+        start_time = time()  # Initialize start time of block
+
+        if isinstance(model_inputs, str):
+            model_inputs = (model_inputs,)
+
+        # number of inputs from user: n-left-most columns
+        n_inputs = len(self.input_keys)
+        # Fitting data
+        ydata = self.results.iloc[:, n_inputs:].to_numpy().flatten()
+        # Prepare input vector
+        xdata = []  # length of each value must be
+        dates_len = len(self.datetimes)
+        try:
+            for var_name in model_inputs:
+                # broadcast all inputs to match ydata
+                if var_name in self.input_keys:
+                    xdata.append(self.results[var_name].to_numpy().repeat(dates_len))
+                elif var_name in self.time_params.keys():
+                    xdata.append(
+                        np.tile(self.time_params[var_name], self.results.shape[0])
+                    )
+                elif var_name in {"datetime"}:
+                    xdata.append(
+                        np.tile(self.datetimes.to_numpy(), self.results.shape[0])
+                    )
+                else:
+                    raise ValueError(f"'{var_name}' is not a valid parameter name!")
+
+        except TypeError:
+            raise TypeError(
+                "Provide a valid model input names vector. Must be iterable"
+                + " of strings, and that input will be provided to 'model'"
+                + f" in the same order.\nYou provided {model_inputs}"
+            )
+
+        ## This is kept here for debug purposes: check valid representation as 1D arrays
+        # fig, axs = plt.subplots(len(model_inputs))
+        # for i, name in enumerate(model_inputs):
+        #     axs[i].set_title(name)
+        #     axs[i].scatter(xdata[i], ydata)
+        # plt.show()
+
+        curve_fit_results = curve_fit(model, xdata, ydata, nan_policy="omit", **kwargs)
+
+        self.processing_time["optimization_from_model"] = time() - start_time
+        return curve_fit_results
