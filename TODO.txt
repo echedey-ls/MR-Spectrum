@@ -1,3 +1,2 @@
-+ AM en vez de ángulo cenital
 + MR spectrum PVLIB's PR
 + Regresión y generación modelos de más a menos variables
