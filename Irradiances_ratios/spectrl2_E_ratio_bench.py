@@ -222,16 +222,19 @@ class MR_E_ratio:
         """
         Generate a plot of 'E fraction' vs each input variable from
         self.simulate_from_product(...) and variable names at.
-        Optionally, a set of variables can be specified via parameter 'plot_keys: set'.
-        Defaults to plot all available and .
+        Optionally, a set of variables can be specified via parameter ``plot_keys``.
+        Defaults to plot all available and ``relative_airmass``.
         """
         start_time = time()  # Initialize start time of block
+        # cast plot_keys to set of strings to plot E fraction against
         if plot_keys is None:  # default to add relative_airmass
             plot_keys = {"relative_airmass", *self.input_keys}
         elif isinstance(plot_keys, str):
             plot_keys = {
                 plot_keys,
-            }  # cast to set
+            }
+        elif not isinstance(plot_keys, set):
+            plot_keys = set(plot_keys)
 
         # variable guard: only allow valid keys:
         #   * self.input_keys & self.time_params
@@ -268,7 +271,8 @@ class MR_E_ratio:
 
         # for each axes, plot a relationship
         # Case: time
-        for ax, var_name in zip(axs, plot_keys.intersection({"datetime"})):
+        for var_name in plot_keys.intersection({"datetime"}):
+            ax = next(axs)
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
             x = self.datetimes if var_name == "datetime" else None
             for _, row in self.results.iloc[n_inputs:].iterrows():
@@ -276,7 +280,8 @@ class MR_E_ratio:
             plot_keys.remove(var_name)
 
         # Case: time-dependant variables in plot_keys
-        for ax, var_name in zip(axs, plot_keys.intersection(self.time_params.keys())):
+        for var_name in plot_keys.intersection(self.time_params.keys()):
+            ax = next(axs)
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
             x = self.time_params[var_name]
             for _, row in self.results.iloc[n_inputs:].iterrows():
@@ -284,7 +289,8 @@ class MR_E_ratio:
             plot_keys.remove(var_name)
 
         # Case: SPECTRL2 generator input parameters
-        for ax, var_name in zip(axs, plot_keys):
+        for var_name in plot_keys:
+            ax = next(axs)
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
             x = self.results[var_name]
             y_df = self.results.iloc[:, n_inputs:]
@@ -297,5 +303,6 @@ class MR_E_ratio:
                 + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
                 + ".png"
             )
+        plt.close()
 
         self.processing_time["plot_results"] = time() - start_time
