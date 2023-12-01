@@ -218,6 +218,61 @@ class MR_E_ratio:
         print(f"> Std  E_λ<λ₀/E = {means.std()}")
         # print(f"Zenith\t STD of avg(E_λ<λ₀/E)\n{stdvs}")
 
+    def get_1d_arrays_from(self, variable_names):
+        """
+        Get 1D numpy arrays to for each variable name.
+        Output is always returned as the first element.
+
+        Parameters
+        ----------
+        variable_names : str or iterable of str
+            Must be any of:
+                * ``datetime``
+                * ``apparent_zenith``, ``aoi``, ``relative_airmass`` or ``dayofyear``
+                * any parameter name provided to ``simulate_from_product``
+        
+        Returns
+        -------
+        Ratio_values : 1D numpy array
+        Variables : list of 1D numpy arrays of specified variables
+        """
+        start_time = time()  # Initialize start time of block
+
+        if isinstance(variable_names, str):
+            variable_names = (variable_names,)
+
+        # number of inputs from user: n-left-most columns
+        n_inputs = len(self.input_keys)
+        # Fitting data
+        ydata = self.results.iloc[:, n_inputs:].to_numpy().flatten()
+
+        xdata = []  # length of each value must be
+        dates_len = len(self.datetimes)
+        try:
+            for var_name in variable_names:
+                # broadcast variables
+                if var_name in self.input_keys:
+                    xdata.append(self.results[var_name].to_numpy().repeat(dates_len))
+                elif var_name in self.time_params.keys():
+                    xdata.append(
+                        np.tile(self.time_params[var_name], self.results.shape[0])
+                    )
+                elif var_name in {"datetime"}:
+                    xdata.append(
+                        np.tile(self.datetimes.to_numpy(), self.results.shape[0])
+                    )
+                else:
+                    raise ValueError(f"'{var_name}' is not a valid parameter name!")
+
+        except TypeError:
+            raise TypeError(
+                "Provide a valid variable values vector. Must be iterable"
+                + f" of strings.\nYou provided {variable_names}"
+            )
+
+        self.processing_time["get_1d_arrays_from"] = time() - start_time
+        return ydata, xdata
+
     def plot_results(
         self, *, plot_keys: set = None, max_cols=2, savefig=True
     ) -> plt.Figure:
@@ -232,16 +287,14 @@ class MR_E_ratio:
         if plot_keys is None:  # default to add relative_airmass
             plot_keys = {"relative_airmass", *self.input_keys}
         elif isinstance(plot_keys, str):
-            plot_keys = {
-                plot_keys,
-            }
-        elif not isinstance(plot_keys, set):
-            plot_keys = set(plot_keys)
+            plot_keys = (plot_keys,)
+        elif not isinstance(plot_keys, tuple):
+            plot_keys = tuple(plot_keys)
 
         # variable guard: only allow valid keys:
         #   * self.input_keys & self.time_params
         allowed_keys = set(self.input_keys) | self.time_params.keys() | {"datetime"}
-        invalid_keys = plot_keys - allowed_keys
+        invalid_keys = {*plot_keys} - allowed_keys
         if invalid_keys == {}:
             raise ValueError(
                 "Incorrect key provided.\n"
@@ -268,36 +321,14 @@ class MR_E_ratio:
         )
         fig.set_size_inches(12, 12)
 
-        # number of inputs from user: n-left-most columns
-        n_inputs = len(self.input_keys)
+        # get output & each of the variables
+        ydata, xdata = self.get_1d_arrays_from(plot_keys)
 
-        # for each axes, plot a relationship
-        # Case: time
-        for var_name in plot_keys.intersection({"datetime"}):
+        # plot output against each of the variables
+        for var_name, var_values in zip(plot_keys, xdata):
             ax = next(axs)
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
-            x = self.datetimes if var_name == "datetime" else None
-            for _, row in self.results.iloc[n_inputs:].iterrows():
-                ax.scatter(x, row[n_inputs:])
-            plot_keys.remove(var_name)
-
-        # Case: time-dependant variables in plot_keys
-        for var_name in plot_keys.intersection(self.time_params.keys()):
-            ax = next(axs)
-            ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
-            x = self.time_params[var_name]
-            for _, row in self.results.iloc[n_inputs:].iterrows():
-                ax.scatter(x, row[n_inputs:])
-            plot_keys.remove(var_name)
-
-        # Case: SPECTRL2 generator input parameters
-        for var_name in plot_keys:
-            ax = next(axs)
-            ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
-            x = self.results[var_name]
-            y_df = self.results.iloc[:, n_inputs:]
-            for _, y_content in y_df.items():
-                ax.scatter(x, y_content)
+            ax.scatter(var_values, ydata)
 
         if savefig:
             fig.savefig(
@@ -308,6 +339,7 @@ class MR_E_ratio:
         plt.close()
 
         self.processing_time["plot_results"] = time() - start_time
+        return fig
 
     def optimization_from_model(
         self, model: Callable = None, model_inputs: tuple = None, **kwargs
@@ -333,38 +365,8 @@ class MR_E_ratio:
         """
         start_time = time()  # Initialize start time of block
 
-        if isinstance(model_inputs, str):
-            model_inputs = (model_inputs,)
-
-        # number of inputs from user: n-left-most columns
-        n_inputs = len(self.input_keys)
-        # Fitting data
-        ydata = self.results.iloc[:, n_inputs:].to_numpy().flatten()
-        # Prepare input vector
-        xdata = []  # length of each value must be
-        dates_len = len(self.datetimes)
-        try:
-            for var_name in model_inputs:
-                # broadcast all inputs to match ydata
-                if var_name in self.input_keys:
-                    xdata.append(self.results[var_name].to_numpy().repeat(dates_len))
-                elif var_name in self.time_params.keys():
-                    xdata.append(
-                        np.tile(self.time_params[var_name], self.results.shape[0])
-                    )
-                elif var_name in {"datetime"}:
-                    xdata.append(
-                        np.tile(self.datetimes.to_numpy(), self.results.shape[0])
-                    )
-                else:
-                    raise ValueError(f"'{var_name}' is not a valid parameter name!")
-
-        except TypeError:
-            raise TypeError(
-                "Provide a valid model input names vector. Must be iterable"
-                + " of strings, and that input will be provided to 'model'"
-                + f" in the same order.\nYou provided {model_inputs}"
-            )
+        # get output & each of the variables
+        ydata, xdata = self.get_1d_arrays_from(model_inputs)
 
         ## This is kept here for debug purposes: check valid representation as 1D arrays
         # fig, axs = plt.subplots(len(model_inputs))
