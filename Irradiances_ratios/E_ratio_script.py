@@ -11,7 +11,7 @@ from irradiance_ratios import LAMBDA0
 
 import numpy as np
 import pandas as pd
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 # Matrix of values to test
 # Atmosphere characterization required params
@@ -29,11 +29,10 @@ spectrl2_generator_input = {
 plot_keys = None
 
 # model function
-model_inputs = ["relative_airmass", "aerosol_turbidity_500nm"]
 p0 = None  # [0.2, 0.1]
-
-
+model_inputs = ["relative_airmass", "aerosol_turbidity_500nm"]
 def model(xdata, c0, c1):  # use this func as model template
+    "c0 * r_am + c1 * aod500"
     r_am, aod500 = xdata
     return c0 * r_am + c1 * aod500
 
@@ -52,6 +51,9 @@ bench.plot_results(plot_keys=plot_keys)
 optim_result = bench.optimization_from_model(
     model=model, model_inputs=model_inputs, p0=p0
 )
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+bench.plot_results_3d(model_inputs, ax)
+plt.show()
 bench.times_summary()
 
 # TODO: PLOT RESULTS & MODEL PREDICTION

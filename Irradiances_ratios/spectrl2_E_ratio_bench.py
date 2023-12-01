@@ -340,6 +340,20 @@ class MR_E_ratio:
 
         self.processing_time["plot_results"] = time() - start_time
         return fig
+    
+    def plot_results_3d(self, plot_keys, ax=None):
+        if len(plot_keys) != 2:
+            raise ValueError("2 values must be provided for X&Y axes of 3D plot.")
+        if ax is None:
+            ax = plt.subplot(projection="3d")
+        # get output & each of the variables
+        z, (x, y) = self.get_1d_arrays_from(plot_keys)
+        ax.scatter(x, y, z)
+        ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ as function of "
+                     + plot_keys[0] + " & " + plot_keys[1])
+        ax.set_xlabel(plot_keys[0])
+        ax.set_ylabel(plot_keys[1])
+        ax.set_zlabel(r"$\frac{E_{λ<λ_0}}{E}$")
 
     def optimization_from_model(
         self, model: Callable = None, model_inputs: tuple = None, **kwargs
