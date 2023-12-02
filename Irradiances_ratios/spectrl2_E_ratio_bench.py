@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 from itertools import product
-from functools import partial
+from functools import partial, lru_cache
 from datetime import datetime
 from time import time
 from typing import Callable
@@ -92,12 +92,13 @@ class MR_E_ratio:
         self.input_keys = None
         self.results = None
         self.processing_time = dict()
+        self.get_1d_arrays_from.cache_clear()
 
     def times_summary(self):
         print("Timing of bench methods:")
         for key, value in self.processing_time.items():
             if value:
-                print(f"\t{key}: {value} s")
+                print(f"\t{key}: {value:.4} s")
 
     def simulation_prerun(self):
         """
@@ -218,6 +219,7 @@ class MR_E_ratio:
         print(f"> Std  E_λ<λ₀/E = {means.std()}")
         # print(f"Zenith\t STD of avg(E_λ<λ₀/E)\n{stdvs}")
 
+    @lru_cache(maxsize=16)  # TODO: implement a good cache
     def get_1d_arrays_from(self, variable_names):
         """
         Get 1D numpy arrays to for each variable name.
@@ -285,23 +287,11 @@ class MR_E_ratio:
         start_time = time()  # Initialize start time of block
         # cast plot_keys to set of strings to plot E fraction against
         if plot_keys is None:  # default to add relative_airmass
-            plot_keys = {"relative_airmass", *self.input_keys}
+            plot_keys = ("relative_airmass", *self.input_keys)
         elif isinstance(plot_keys, str):
             plot_keys = (plot_keys,)
         elif not isinstance(plot_keys, tuple):
             plot_keys = tuple(plot_keys)
-
-        # variable guard: only allow valid keys:
-        #   * self.input_keys & self.time_params
-        allowed_keys = set(self.input_keys) | self.time_params.keys() | {"datetime"}
-        invalid_keys = {*plot_keys} - allowed_keys
-        if invalid_keys == {}:
-            raise ValueError(
-                "Incorrect key provided.\n"
-                + f"Allowed keys are: {allowed_keys}\n"
-                + f"Invalid keys are: {invalid_keys}"
-            )
-        del allowed_keys, invalid_keys
 
         # assume we've got an iterable of strings
         # make at most two columns
@@ -381,13 +371,6 @@ class MR_E_ratio:
 
         # get output & each of the variables
         ydata, xdata = self.get_1d_arrays_from(model_inputs)
-
-        ## This is kept here for debug purposes: check valid representation as 1D arrays
-        # fig, axs = plt.subplots(len(model_inputs))
-        # for i, name in enumerate(model_inputs):
-        #     axs[i].set_title(name)
-        #     axs[i].scatter(xdata[i], ydata)
-        # plt.show()
 
         curve_fit_results = curve_fit(model, xdata, ydata, nan_policy="omit", **kwargs)
 

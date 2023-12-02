@@ -8,14 +8,19 @@ Silicon-based PV cell technologies.
 # %% Initialization
 from spectrl2_E_ratio_bench import MR_E_ratio
 from irradiance_ratios import LAMBDA0
+from Models import MODELS_BY_PARAMS
 
 import numpy as np
+from scipy.optimize import curve_fit
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from datetime import datetime
+import pickle
+
 # Matrix of values to test
 # Atmosphere characterization required params
-N = 3
+N = 5
 spectrl2_generator_input = {
     # Wikipedia cites range 870 to 1085 hPa
     "surface_pressure": np.linspace(870.0, 1085.0, N) * 100,  # Pa
@@ -30,13 +35,7 @@ plot_keys = None
 
 # model function
 p0 = None  # [0.2, 0.1]
-model_inputs = ["relative_airmass", "aerosol_turbidity_500nm"]
-def model(xdata, c0, c1):  # use this func as model template
-    "c0 * r_am + c1 * aod500"
-    r_am, aod500 = xdata
-    return c0 * r_am + c1 * aod500
-
-
+model_inputs = ("relative_airmass", "aerosol_turbidity_500nm")
 bench = MR_E_ratio(
     datetimes=pd.date_range(
         "2023-11-27T00", "2023-11-28T00", freq=pd.Timedelta(minutes=15)
@@ -44,32 +43,58 @@ bench = MR_E_ratio(
 )
 
 # %%
-# Test with monosi/polysi cutoff wavelength
-bench.cutoff_lambda = LAMBDA0["monosi"]  # == polysi
-bench.simulate_from_product(**spectrl2_generator_input)
-bench.plot_results(plot_keys=plot_keys)
-optim_result = bench.optimization_from_model(
-    model=model, model_inputs=model_inputs, p0=p0
-)
-fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-bench.plot_results_3d(model_inputs, ax)
-plt.show()
-bench.times_summary()
+# Test matrix & save values
+#   * For different cutoff wavelengths / materials
+#   * For different models
 
-# TODO: PLOT RESULTS & MODEL PREDICTION
+saved_results_dict: dict[
+    str,  # lambda0
+    dict[
+        str,  # model name
+        tuple[
+            tuple[float, ...],  # popt coeffs
+            tuple[float, ...],  # perr coeffs
+        ],
+    ],
+] = {}
 
-# %%
-# Test with asi cutoff wavelength
-bench.reset_simulation_state()
-bench.cutoff_lambda = LAMBDA0["asi"]
-bench.simulate_from_product(**spectrl2_generator_input)
-bench.plot_results(plot_keys=plot_keys)
-bench.optimization_from_model(model=model, model_inputs=model_inputs, p0=p0)
-bench.times_summary()
+for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
+    # Initialization
+    bench.reset_simulation_state()
+    bench.cutoff_lambda = cutoff_lambda
+    saved_results_dict[cutoff_lambda] = {}
 
-# %%
-# bench.results.to_csv(
-#     f"E_ratio_lambda{bench.cutoff_lambda:04.0f}_"
-#     + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-#     + ".csv"
-# )
+    bench.simulate_from_product(**spectrl2_generator_input)
+    bench.plot_results(plot_keys=plot_keys)
+
+    # Get fitting data
+    regressand, regressors = bench.get_1d_arrays_from(model_inputs)
+    bench.times_summary()
+
+    # 3D plot of original and models
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ as function of " + ", ".join(model_inputs))
+    ax.scatter(regressors[0], regressors[1], regressand, label="Spectrum ratio")
+    for model in MODELS_BY_PARAMS[", ".join(model_inputs)]:
+        popt, pcov = curve_fit(model, regressors, regressand, nan_policy="omit")
+        perr = np.sqrt(np.diag(pcov))
+        saved_results_dict[cutoff_lambda][model.__name__] = (popt, perr)
+        ax.scatter(
+            regressors[0], regressors[1], model(regressors, *popt), label=model.__name__
+        )
+    ax.set_xlabel(model_inputs[0])
+    ax.set_ylabel(model_inputs[1])
+    ax.set_zlabel(r"$\frac{E_{λ<λ_0}}{E}$")
+    ax.legend()
+    fig.savefig(
+        f"Models_3D_lambda{cutoff_lambda:04.0f}_"
+        + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        + ".png"
+    )
+    plt.show()
+
+with open(
+    "model_fitting_results" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl",
+    "wb",
+) as handle:
+    pickle.dump(saved_results_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
