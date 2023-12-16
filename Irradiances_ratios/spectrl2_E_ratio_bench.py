@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 from itertools import product
-from functools import partial, lru_cache
+from functools import partial
 from datetime import datetime
 from time import time
 from typing import Callable
@@ -92,7 +92,6 @@ class MR_E_ratio:
         self.input_keys = None
         self.results = None
         self.processing_time = dict()
-        self.get_1d_arrays_from.cache_clear()
 
     def times_summary(self):
         print("Timing of bench methods:")
@@ -137,7 +136,7 @@ class MR_E_ratio:
         Process a simulation from **inputvals.
 
         inputvals are keyword arguments, numpy 1-d arrays.
-        It must contain spectrl2 required parameters:
+        It must contain SPECTRL2 required parameters:
           * surface_pressure
           * precipitable_water
           * aerosol_turbidity_500nm
@@ -149,11 +148,11 @@ class MR_E_ratio:
           * aerosol_asymmetry_factor=0.65
 
         Saves results to a dataframe with the following shape:
-          ==================== ========================
-          ... input values ... ... datetimes values ...
-          ==================== ========================
-            parameter values        E_λ<λ₀/E values
-          ==================== ========================
+          ==================== ========================================================
+          input/datetimes keys poa_sky_diffuse poa_ground_diffuse poa_direct poa_global
+          ==================== ========================================================
+            parameter values                       E_λ<λ₀/E values
+          ==================== ========================================================
         """
         # Initialize needed values, in case they were changed from the outside
         self.simulation_prerun()
@@ -163,38 +162,55 @@ class MR_E_ratio:
 
         self.input_keys = (*inputvals.keys(),)
 
-        # Simulation results, save an entry for each of the cartesian product
+        # Simulation results dataframe
+        spectrl2_input_columns = (
+            *self.input_keys,
+            *self.time_params.keys(),
+        )
+        spectrl2_output_columns = (
+            "poa_sky_diffuse",
+            "poa_ground_diffuse",
+            "poa_direct",
+            "poa_global",
+        )
+        n_inputvals_combinations = np.prod([len(array) for array in inputvals.values()])
         self.results = pd.DataFrame(
-            # columns after *self.input_keys only represent a position in
-            # self.time_params
-            columns=(*self.input_keys, *self.datetimes),
-            # pre-allocate to the length of the itertools.product result
-            index=np.arange(np.prod([len(array) for array in inputvals.values()])),
+            # pre-allocate
+            columns=spectrl2_input_columns + spectrl2_output_columns,
             dtype=np.float64,
         )
-        for index, product_tuple in enumerate(product(*inputvals.values())):
-            product_input = dict(zip(self.input_keys, product_tuple))
-            # 'wavelength', 'dni_extra', 'dhi', 'dni', 'poa_sky_diffuse',
-            # 'poa_ground_diffuse', 'poa_direct', 'poa_global'
-            spectrl2_result = spectrl2(
-                **product_input,
-                **self.constant_params,
-                **self.time_params,
-            )
-            self.results.iloc[index] = [
-                *product_tuple,
-                *map(
-                    partial(
-                        E_lambda_over_E,
-                        self.cutoff_lambda,
-                        spectrl2_result["wavelength"],
-                    ),
-                    spectrl2_result["poa_global"].swapaxes(1, 0),
+
+        self.results[[*self.input_keys]] = np.fromiter(
+            product(*inputvals.values()),
+            dtype=np.dtype((np.float64, len(self.input_keys))),
+        ).repeat(len(self.datetimes), axis=0)
+
+        self.results[[*self.time_params.keys()]] = np.tile(
+            np.asarray((*self.time_params.values(),)), n_inputvals_combinations
+        ).T
+
+        spectrl2_result = spectrl2(
+            **self.constant_params,
+            **{col: self.results[col].to_numpy() for col in spectrl2_input_columns},
+        )
+
+        # Following partial func. only takes the spectral irradiance as argument
+        wrapped_E_lambda_over_E = partial(
+            E_lambda_over_E,
+            self.cutoff_lambda,
+            spectrl2_result["wavelength"],
+        )
+        for output_name in spectrl2_output_columns:
+            self.results[output_name] = np.fromiter(
+                map(
+                    wrapped_E_lambda_over_E,
+                    spectrl2_result[output_name].swapaxes(1, 0),
                 ),
-            ]
+                dtype=np.float64,
+            )
 
         self.processing_time["simulate_from_product"] = time() - start_time
-
+        
         self.simulation_post()
 
     def simulation_post(self):
@@ -209,71 +225,14 @@ class MR_E_ratio:
         """
         Print condensed statistics to console
         """
-        n_inputs = len(self.input_keys)
-        means = self.results.iloc[:, n_inputs:].mean().dropna()
-        # stdvs = self.results.iloc[:, n_inputs:].std().dropna()
+        means = self.results.filter(regex="poa_").mean().dropna()
+        stdvs = self.results.filter(regex="poa_").std().dropna()
         print("Simulation Results")
         print(f"> Cutoff wavelength: {self.cutoff_lambda} nm")
-        print(f"> Mean E_λ<λ₀/E = {means.mean()}")
-        # print(f"Zenith\t Mean of avg(E_λ<λ₀/E)\n{means}")
-        print(f"> Std  E_λ<λ₀/E = {means.std()}")
-        # print(f"Zenith\t STD of avg(E_λ<λ₀/E)\n{stdvs}")
-
-    @lru_cache(maxsize=16)  # TODO: implement a good cache
-    def get_1d_arrays_from(self, variable_names):
-        """
-        Get 1D numpy arrays to for each variable name.
-        Output is always returned as the first element.
-
-        Parameters
-        ----------
-        variable_names : str or iterable of str
-            Must be any of:
-                * ``datetime``
-                * ``apparent_zenith``, ``aoi``, ``relative_airmass`` or ``dayofyear``
-                * any parameter name provided to ``simulate_from_product``
-        
-        Returns
-        -------
-        Ratio_values : 1D numpy array
-        Variables : list of 1D numpy arrays of specified variables
-        """
-        start_time = time()  # Initialize start time of block
-
-        if isinstance(variable_names, str):
-            variable_names = (variable_names,)
-
-        # number of inputs from user: n-left-most columns
-        n_inputs = len(self.input_keys)
-        # Fitting data
-        ydata = self.results.iloc[:, n_inputs:].to_numpy().flatten()
-
-        xdata = []  # length of each value must be
-        dates_len = len(self.datetimes)
-        try:
-            for var_name in variable_names:
-                # broadcast variables
-                if var_name in self.input_keys:
-                    xdata.append(self.results[var_name].to_numpy().repeat(dates_len))
-                elif var_name in self.time_params.keys():
-                    xdata.append(
-                        np.tile(self.time_params[var_name], self.results.shape[0])
-                    )
-                elif var_name in {"datetime"}:
-                    xdata.append(
-                        np.tile(self.datetimes.to_numpy(), self.results.shape[0])
-                    )
-                else:
-                    raise ValueError(f"'{var_name}' is not a valid parameter name!")
-
-        except TypeError:
-            raise TypeError(
-                "Provide a valid variable values vector. Must be iterable"
-                + f" of strings.\nYou provided {variable_names}"
-            )
-
-        self.processing_time["get_1d_arrays_from"] = time() - start_time
-        return ydata, xdata
+        print("> Mean E_λ<λ₀/E =")
+        print(means)
+        print("> Std  E_λ<λ₀/E =")
+        print(stdvs)
 
     def plot_results(
         self, *, plot_keys: set = None, max_cols=2, savefig=True
@@ -287,11 +246,11 @@ class MR_E_ratio:
         start_time = time()  # Initialize start time of block
         # cast plot_keys to set of strings to plot E fraction against
         if plot_keys is None:  # default to add relative_airmass
-            plot_keys = ("relative_airmass", *self.input_keys)
+            plot_keys = ["relative_airmass", *self.input_keys]
         elif isinstance(plot_keys, str):
-            plot_keys = (plot_keys,)
-        elif not isinstance(plot_keys, tuple):
-            plot_keys = tuple(plot_keys)
+            plot_keys = [plot_keys]
+        elif not isinstance(plot_keys, list):
+            plot_keys = list(plot_keys)
 
         # assume we've got an iterable of strings
         # make at most two columns
@@ -312,10 +271,11 @@ class MR_E_ratio:
         fig.set_size_inches(12, 12)
 
         # get output & each of the variables
-        ydata, xdata = self.get_1d_arrays_from(plot_keys)
+        ydata = self.results["poa_global"]
+        xdata = self.results[plot_keys]
 
         # plot output against each of the variables
-        for var_name, var_values in zip(plot_keys, xdata):
+        for var_name, var_values in xdata.items():
             ax = next(axs)
             ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
             ax.scatter(var_values, ydata)
@@ -330,7 +290,7 @@ class MR_E_ratio:
 
         self.processing_time["plot_results"] = time() - start_time
         return fig
-    
+
     def plot_results_3d(self, plot_keys, ax=None):
         if len(plot_keys) != 2:
             raise ValueError("2 values must be provided for X&Y axes of 3D plot.")
@@ -339,8 +299,12 @@ class MR_E_ratio:
         # get output & each of the variables
         z, (x, y) = self.get_1d_arrays_from(plot_keys)
         ax.scatter(x, y, z)
-        ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ as function of "
-                     + plot_keys[0] + " & " + plot_keys[1])
+        ax.set_title(
+            r"$\frac{E_{λ<λ_0}}{E}$ as function of "
+            + plot_keys[0]
+            + " & "
+            + plot_keys[1]
+        )
         ax.set_xlabel(plot_keys[0])
         ax.set_ylabel(plot_keys[1])
         ax.set_zlabel(r"$\frac{E_{λ<λ_0}}{E}$")

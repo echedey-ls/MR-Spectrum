@@ -68,7 +68,8 @@ for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     bench.plot_results(plot_keys=plot_keys)
 
     # Get fitting data
-    regressand, regressors = bench.get_1d_arrays_from(model_inputs)
+    regressand = bench.results["poa_global"]
+    regressors = bench.results[list(model_inputs)].to_numpy().T
     bench.times_summary()
 
     # 3D plot of original and models
