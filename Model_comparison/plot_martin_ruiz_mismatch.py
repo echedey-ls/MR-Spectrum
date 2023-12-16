@@ -38,6 +38,8 @@ import pvlib
 from scipy import stats
 import pandas as pd
 
+from ..Irradiances_ratios.irradiance_ratios import G_over_G_lambda
+
 surface_tilt = 40
 surface_azimuth = 180  # Pointing South
 
@@ -173,7 +175,7 @@ plt.show()
 # precipitable water. We assume the standard spectrum, `1.42 cm`.
 
 # Retrieve modules and select the subset we want to work with the SAPM model
-module_type = "mc-Si"  # Equivalent to monosi
+module_type = "c-Si"  # Equivalent to monosi
 sandia_modules = pvlib.pvsystem.retrieve_sam(name="SandiaMod")
 modules_subset = sandia_modules.loc[
     :, sandia_modules.loc["Material"] == module_type
