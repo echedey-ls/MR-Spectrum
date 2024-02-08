@@ -22,13 +22,13 @@ import pickle
 # Atmosphere characterization required params
 N = 5
 spectrl2_generator_input = {
-    # Wikipedia cites range 870 to 1085 hPa
-    "surface_pressure": np.linspace(870.0, 1085.0, N) * 100,  # Pa
     # SPECTRL2 paper Fig 4-6: 1.0 to 2.5 cm
     "precipitable_water": np.linspace(1.0, 2.5, N),
     # SPECTRL2 paper Fig 4-5: 0.08 to 0.30 [unitless]
     "aerosol_turbidity_500nm": np.linspace(0.08, 0.30, N),
 }
+
+constant_params = {"surface_pressure": 1013100.0}
 
 # what do we want to plot E_λ<λ₀/E against? (None = default behaviour)
 plot_keys = None
@@ -64,6 +64,7 @@ for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     bench.cutoff_lambda = cutoff_lambda
     saved_results_dict[cutoff_lambda] = {}
 
+    bench.constant_params.update(constant_params)
     bench.simulate_from_product(**spectrl2_generator_input)
     bench.plot_results(plot_keys=plot_keys)
 

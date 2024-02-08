@@ -12,7 +12,7 @@ import numpy as np
 import functools
 
 
-LAMBDA0 = {  # nm
+LAMBDA0 = {  # Materials different cutoff wavelengths, [nm]
     "monosi": 1100.0,
     "polysi": 1100.0,
     "asi": 800.0,

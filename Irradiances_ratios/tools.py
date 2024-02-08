@@ -12,10 +12,10 @@ def check_evenly_spaced_numpy_array(array: np.array):
     np.all(np.diff(array) == np.diff(array)[0])
 
 
-def day_of_year(d: date):
+def day_of_year(d: date, ref_year=None):
     # https://stackoverflow.com/a/25852628
     # https://docs.python.org/3/library/datetime.html#datetime.datetime.timetuple
-    yday = d.toordinal() - date(d.year, 1, 1).toordinal() + 1
+    yday = d.toordinal() - date(ref_year or d.year, 1, 1).toordinal() + 1
     return yday
 
 
