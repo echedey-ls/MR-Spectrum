@@ -14,9 +14,11 @@ repos:
         args: [ --fix ]
       # Run the formatter.
       - id: ruff-format
-        args: [ --exclude, Irradiances_ratios\mismatch\martin_ruiz.py ]
+        args: [ --exclude, Irradiances_ratios/mismatch/martin_ruiz.py, Model_comparison/plot_martin_ruiz_mismatch.py ]
       # Run the formatter on specific files.
       - id: ruff-format
-        args: [ --line-length, "79",
-              .\Irradiances_ratios\mismatch\martin_ruiz.py,
-              .\Model_comparison\plot_martin_ruiz_mismatch.py ]
+        files: 'Irradiances_ratios/mismatch/martin_ruiz\.py'
+        args: [ --line-length, "79"]
+      - id: ruff-format
+        files: 'Model_comparison/plot_martin_ruiz_mismatch\.py'
+        args: [ --line-length, "79"]
