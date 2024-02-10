@@ -9,6 +9,7 @@ made of each of the models that take those variables as arguments.
 """
 from . import models_relative_am
 from . import models_relative_am_and_aod500
+from . import models_clearness_index_and_airmass_absolute
 
 from inspect import getmembers, isfunction
 from typing import Callable
@@ -29,5 +30,7 @@ def _get_models_and_inputs_from_modules(*modules):
 
 
 MODELS_BY_PARAMS: dict[str, tuple[Callable, ...]] = _get_models_and_inputs_from_modules(
-    models_relative_am, models_relative_am_and_aod500
+    models_relative_am,
+    models_relative_am_and_aod500,
+    models_clearness_index_and_airmass_absolute,
 )
