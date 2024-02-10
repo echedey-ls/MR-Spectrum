@@ -10,7 +10,11 @@ from irradiance_ratios import E_lambda_over_E, LAMBDA0
 from tools import day_of_year
 
 from pvlib.spectrum import spectrl2
-from pvlib.irradiance import aoi
+from pvlib.irradiance import (
+    aoi,
+    clearness_index,
+    ghi_from_poa_driesse_2023,
+)
 from pvlib.location import Location
 import numpy as np
 import pandas as pd
@@ -80,6 +84,13 @@ class MR_E_ratio:
                     minutes=5
                 ),  # unit="s" bugs this TODO?: report to PVLIB
             )
+        self.constant_params = {
+            "surface_tilt": self.surface_tilt,  # degrees
+            "ground_albedo": 0.25,  # concrete pavement
+            # ref. assumes from 0.31 to 0.3444 atm-cm & ozone does not have much impact
+            # in spectra for Silicon (c-Si, a-Si) devices, so we are excluding it
+            "ozone": self.ozone,
+        }
 
     def reset_simulation_state(self):
         """
@@ -88,7 +99,7 @@ class MR_E_ratio:
         """
         self.solpos = None
         self.aoi = None
-        self.time_params = None
+        self.spectrl2_time_params = None
         self.input_keys = None
         self.results = None
         self.processing_time = dict()
@@ -104,13 +115,6 @@ class MR_E_ratio:
         Calculates some values from scratch, in case they were updated from the outside
         """
         start_time = time()  # Initialize start time of block
-        self.constant_params = {
-            "surface_tilt": self.surface_tilt,  # degrees
-            "ground_albedo": 0.25,  # concrete pavement
-            # ref. assumes from 0.31 to 0.3444 atm-cm & ozone does not have much impact
-            # in spectra for Silicon (c-Si, a-Si) devices, so we are excluding it
-            "ozone": self.ozone,
-        }
         # Time-dependant values
         self.solpos = self.locus.get_solarposition(self.datetimes)
         self.aoi = aoi(
@@ -119,15 +123,17 @@ class MR_E_ratio:
             self.solpos["apparent_zenith"],
             self.solpos["azimuth"],
         )
-        self.time_params = {
+        airmasses = self.locus.get_airmass(solar_position=self.solpos)
+        self.spectrl2_time_params = {
             "apparent_zenith": self.solpos["apparent_zenith"].to_numpy(),
             "aoi": self.aoi.to_numpy(),
-            "relative_airmass": self.locus.get_airmass(solar_position=self.solpos)[
-                "airmass_relative"
-            ].to_numpy(),
+            "relative_airmass": airmasses["airmass_relative"].to_numpy(),
             "dayofyear": np.fromiter(
                 map(day_of_year, self.datetimes), dtype=np.float64
             ),
+        }
+        self.other_time_params = {
+            "absolute_airmass": airmasses["airmass_absolute"].to_numpy()
         }
         self.processing_time["simulation_prerun"] = time() - start_time
 
@@ -148,11 +154,11 @@ class MR_E_ratio:
           * aerosol_asymmetry_factor=0.65
 
         Saves results to a dataframe with the following shape:
-          ==================== ========================================================
-          input/datetimes keys poa_sky_diffuse poa_ground_diffuse poa_direct poa_global
-          ==================== ========================================================
-            parameter values                       E_λ<λ₀/E values
-          ==================== ========================================================
+          ================ ===================== ========================
+          SPECTRL2 inputs  poa_components_ratios poa_components_integrals
+          ================ ===================== ========================
+          Parameter values      E_λ<λ₀/E values      Irradiances in W/m^2
+          ================ ===================== ========================
         """
         # Initialize needed values, in case they were changed from the outside
         self.simulation_prerun()
@@ -162,12 +168,16 @@ class MR_E_ratio:
 
         self.input_keys = (*inputvals.keys(),)
 
-        # Simulation results dataframe
+        ## Simulation results DataFrame
+        # Inputs side
         spectrl2_input_columns = (
             *self.input_keys,
-            *self.time_params.keys(),
+            *self.spectrl2_time_params.keys(),
         )
-        spectrl2_output_columns = (
+        # Things we can base our model on
+        derived_values_columns = ("clearness_index",)
+        # The outputs
+        spectrl2_output_columns = (  # TODO: re-evaluate what to do prior to simulation
             "poa_sky_diffuse",
             "poa_ground_diffuse",
             "poa_direct",
@@ -175,25 +185,31 @@ class MR_E_ratio:
         )
         n_inputvals_combinations = np.prod([len(array) for array in inputvals.values()])
         self.results = pd.DataFrame(
-            # pre-allocate
-            columns=spectrl2_input_columns + spectrl2_output_columns,
+            columns=(
+                spectrl2_input_columns
+                + derived_values_columns
+                # + spectrl2_output_columns
+            ),
             dtype=np.float64,
         )
 
+        # Fill input columns from cartesian product
         self.results[[*self.input_keys]] = np.fromiter(
             product(*inputvals.values()),
             dtype=np.dtype((np.float64, len(self.input_keys))),
         ).repeat(len(self.datetimes), axis=0)
-
-        self.results[[*self.time_params.keys()]] = np.tile(
-            np.asarray((*self.time_params.values(),)), n_inputvals_combinations
+        # Fill time-dependant values
+        self.results[[*self.spectrl2_time_params.keys()]] = np.tile(
+            np.asarray((*self.spectrl2_time_params.values(),)), n_inputvals_combinations
         ).T
-
+        self.results["datetimes"] = np.tile(self.datetimes, n_inputvals_combinations).T
+        # Calculate spectrums from the SPECTRL2 model
         spectrl2_result = spectrl2(
             **self.constant_params,
             **{col: self.results[col].to_numpy() for col in spectrl2_input_columns},
         )
 
+        ## Integrate and calculate spectral ratios (unitless)
         # Following partial func. only takes the spectral irradiance as argument
         wrapped_E_lambda_over_E = partial(
             E_lambda_over_E,
@@ -201,16 +217,56 @@ class MR_E_ratio:
             spectrl2_result["wavelength"],
         )
         for output_name in spectrl2_output_columns:
-            self.results[output_name] = np.fromiter(
+            self.results[output_name + "_ratio"] = np.fromiter(
                 map(
                     wrapped_E_lambda_over_E,
                     spectrl2_result[output_name].swapaxes(1, 0),
                 ),
                 dtype=np.float64,
             )
+        ## Integrate specific spectral components (W/m^2)
+        spectrl2_integ_columns = ("poa_global",)
+        wavelength_integrator = partial(np.trapz, x=spectrl2_result["wavelength"])
+        for col_name in spectrl2_integ_columns:
+            self.results[col_name + "_integ"] = np.fromiter(
+                map(
+                    wavelength_integrator,
+                    spectrl2_result[output_name].swapaxes(1, 0),
+                ),
+                dtype=np.float64,
+            )
+
+        ## Derived values contain special cases
+        # -- Clearness Index (the only one for now)
+        # TODO: evaluate processing bottleneck ?
+        extra_radiation = np.trapz(
+            spectrl2_result["dni_extra"].swapaxes(1, 0), spectrl2_result["wavelength"]
+        )
+        # get GHI - needs reverse transposition
+        solar_azimuth = np.tile(
+            self.solpos["azimuth"], n_inputvals_combinations
+        ).T
+        ghi = ghi_from_poa_driesse_2023(
+            surface_tilt=self.surface_tilt,
+            surface_azimuth=self.surface_azimuth,
+            solar_zenith=self.results["apparent_zenith"],
+            solar_azimuth=solar_azimuth,
+            poa_global=self.results["poa_global_integ"],
+            dni_extra=extra_radiation,
+            airmass=self.results["relative_airmass"],
+            albedo=self.constant_params["ground_albedo"],
+            xtol=0.01,
+            full_output=False
+        )
+
+        self.results["clearness_index"] = clearness_index(
+            ghi=ghi,
+            solar_zenith=self.results["apparent_zenith"],
+            extra_radiation=extra_radiation,
+        )
 
         self.processing_time["simulate_from_product"] = time() - start_time
-        
+
         self.simulation_post()
 
     def simulation_post(self):
@@ -225,8 +281,8 @@ class MR_E_ratio:
         """
         Print condensed statistics to console
         """
-        means = self.results.filter(regex="poa_").mean().dropna()
-        stdvs = self.results.filter(regex="poa_").std().dropna()
+        means = self.results.filter(regex="poa_.*_ratio").mean()
+        stdvs = self.results.filter(regex="poa_.*_ratio").std()
         print("Simulation Results")
         print(f"> Cutoff wavelength: {self.cutoff_lambda} nm")
         print("> Mean E_λ<λ₀/E =")
