@@ -12,6 +12,15 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+        {
+            "name": "Python: E ratio script",
+            "type": "python",
+            "request": "launch",
+            "purpose": ["debug-test"],
+            "program": "./Irradiances_ratios/E_ratio_script.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }
