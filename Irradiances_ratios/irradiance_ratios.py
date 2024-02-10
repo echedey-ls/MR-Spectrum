@@ -26,7 +26,6 @@ def calc_irrad_integrals(
     From a spectrum of wavelengths and their irradiances, calculate
     :math:`E_{\lambda_0 < \lambda} = \int_{\lambda_min}^{\lambda_0} E(\lambda) d\lambda`
     and :math:`E = \int_{\lambda_min}^{+\infty} E(\lambda) d\lambda`.
-    This function is optimized by numba.
 
     Parameters
     ----------

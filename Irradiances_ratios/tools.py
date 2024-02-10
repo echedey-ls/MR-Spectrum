@@ -1,5 +1,4 @@
 import numpy as np
-import numba
 
 from datetime import date
 import functools
@@ -7,7 +6,6 @@ import inspect
 
 
 @functools.lru_cache(maxsize=2, typed=False)
-@numba.njit
 def check_evenly_spaced_numpy_array(array: np.array):
     np.all(np.diff(array) == np.diff(array)[0])
 
