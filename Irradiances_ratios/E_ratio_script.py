@@ -6,7 +6,7 @@ Silicon-based PV cell technologies.
 """
 
 # %% Initialization
-from spectrl2_E_ratio_bench import MR_E_ratio
+from spectrl2_E_ratio_bench import MR_SPECTRL2_E_ratio_bench
 from irradiance_ratios import LAMBDA0
 from Models import MODELS_BY_PARAMS
 
@@ -41,7 +41,7 @@ plot_keys = None
 # model function
 p0 = None  # [0.2, 0.1]
 model_inputs = ("relative_airmass", "aerosol_turbidity_500nm")
-bench = MR_E_ratio(
+bench = MR_SPECTRL2_E_ratio_bench(
     datetimes=pd.date_range(
         "2023-11-27T00", "2023-11-28T00", freq=pd.Timedelta(minutes=15)
     )

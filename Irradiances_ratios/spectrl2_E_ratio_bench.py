@@ -28,7 +28,7 @@ from time import time
 from typing import Callable
 
 
-class MR_E_ratio:
+class MR_SPECTRL2_E_ratio_bench:
     """
     Group common workflow in the most flexible way possible to test with a wide range
     of input data, generate spectrums and integrate them.
@@ -329,7 +329,7 @@ class MR_E_ratio:
         fig.set_size_inches(12, 12)
 
         # get output & each of the variables
-        ydata = self.results["poa_global"]
+        ydata = self.results["poa_global_ratio"]
         xdata = self.results[plot_keys]
 
         # plot output against each of the variables
