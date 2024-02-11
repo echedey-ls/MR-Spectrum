@@ -16,7 +16,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from datetime import datetime
-import pickle
+from pathlib import Path
+
+# Set output folder for current run based on timestamp
+base_output_folder = Path("outputs/" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S"))
+if not base_output_folder.exists():
+    base_output_folder.mkdir()
 
 # Matrix of values to test
 # Atmosphere characterization required params
@@ -47,26 +52,21 @@ bench = MR_E_ratio(
 #   * For different cutoff wavelengths / materials
 #   * For different models
 
-saved_results_dict: dict[
-    str,  # lambda0
-    dict[
-        str,  # model name
-        tuple[
-            tuple[float, ...],  # popt coeffs
-            tuple[float, ...],  # perr coeffs
-        ],
-    ],
-] = {}
-
 for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
+    # Set output folder per run
+    output_folder = base_output_folder.joinpath(f"{cutoff_lambda:04.0f}nm/")
+    output_folder.mkdir()
     # Initialization
     bench.reset_simulation_state()
     bench.cutoff_lambda = cutoff_lambda
-    saved_results_dict[cutoff_lambda] = {}
 
     bench.constant_params.update(constant_params)
     bench.simulate_from_product(**spectrl2_generator_input)
-    bench.plot_results(plot_keys=plot_keys)
+    bench.plot_results(plot_keys=plot_keys, output_dir=output_folder)
+
+    # # test Kt calculation
+    # plt.scatter(bench.results["datetimes"], bench.results["clearness_index"])
+    # plt.savefig(output_folder.joinpath("kt_over_time.png"))
 
     # Get fitting data
     regressand = bench.results["poa_global"]
@@ -80,7 +80,6 @@ for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     for model in MODELS_BY_PARAMS[", ".join(model_inputs)]:
         popt, pcov = curve_fit(model, regressors, regressand, nan_policy="omit")
         perr = np.sqrt(np.diag(pcov))
-        saved_results_dict[cutoff_lambda][model.__name__] = (popt, perr)
         ax.scatter(
             regressors[0], regressors[1], model(regressors, *popt), label=model.__name__
         )
@@ -88,15 +87,14 @@ for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     ax.set_ylabel(model_inputs[1])
     ax.set_zlabel(r"$\frac{E_{λ<λ_0}}{E}$")
     ax.legend()
-    fig.savefig(
-        f"Models_3D_lambda{cutoff_lambda:04.0f}_"
-        + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-        + ".png"
-    )
+    fig.savefig(output_folder.joinpath("Models_3D_lambda.png"))
     plt.show()
 
-with open(
-    "model_fitting_results" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl",
-    "wb",
-) as handle:
-    pickle.dump(saved_results_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+# with open(
+#     "outputs/"
+#     + "model_fitting_results"
+#     + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+#     + ".pkl",
+#     "wb",
+# ) as handle:
+#     pickle.dump(saved_results_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)

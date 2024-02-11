@@ -23,7 +23,7 @@ from scipy.optimize import curve_fit
 
 from itertools import product
 from functools import partial
-from datetime import datetime
+from pathlib import Path
 from time import time
 from typing import Callable
 
@@ -186,8 +186,7 @@ class MR_E_ratio:
         n_inputvals_combinations = np.prod([len(array) for array in inputvals.values()])
         self.results = pd.DataFrame(
             columns=(
-                spectrl2_input_columns
-                + derived_values_columns
+                spectrl2_input_columns + derived_values_columns
                 # + spectrl2_output_columns
             ),
             dtype=np.float64,
@@ -243,9 +242,7 @@ class MR_E_ratio:
             spectrl2_result["dni_extra"].swapaxes(1, 0), spectrl2_result["wavelength"]
         )
         # get GHI - needs reverse transposition
-        solar_azimuth = np.tile(
-            self.solpos["azimuth"], n_inputvals_combinations
-        ).T
+        solar_azimuth = np.tile(self.solpos["azimuth"], n_inputvals_combinations).T
         ghi = ghi_from_poa_driesse_2023(
             surface_tilt=self.surface_tilt,
             surface_azimuth=self.surface_azimuth,
@@ -256,7 +253,7 @@ class MR_E_ratio:
             airmass=self.results["relative_airmass"],
             albedo=self.constant_params["ground_albedo"],
             xtol=0.01,
-            full_output=False
+            full_output=False,
         )
 
         self.results["clearness_index"] = clearness_index(
@@ -291,7 +288,7 @@ class MR_E_ratio:
         print(stdvs)
 
     def plot_results(
-        self, *, plot_keys: set = None, max_cols=2, savefig=True
+        self, *, plot_keys: set = None, max_cols=2, savefig=True, output_dir=Path()
     ) -> plt.Figure:
         """
         Generate a plot of 'E fraction' vs each input variable from
@@ -300,6 +297,11 @@ class MR_E_ratio:
         Defaults to plot all available and ``relative_airmass``.
         """
         start_time = time()  # Initialize start time of block
+
+        # cast output_dir to Path object if not
+        if not isinstance(output_dir, Path):
+            output_dir = Path(output_dir)
+
         # cast plot_keys to set of strings to plot E fraction against
         if plot_keys is None:  # default to add relative_airmass
             plot_keys = ["relative_airmass", *self.input_keys]
@@ -337,11 +339,7 @@ class MR_E_ratio:
             ax.scatter(var_values, ydata)
 
         if savefig:
-            fig.savefig(
-                f"E_ratio_lambda{self.cutoff_lambda:04.0f}_"
-                + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-                + ".png"
-            )
+            fig.savefig(output_dir.joinpath("E_ratio_lambda.png"))
         plt.close()
 
         self.processing_time["plot_results"] = time() - start_time
