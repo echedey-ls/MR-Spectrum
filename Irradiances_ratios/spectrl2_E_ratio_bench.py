@@ -192,17 +192,23 @@ class MR_SPECTRL2_E_ratio_bench:
             dtype=np.float64,
         )
 
-        # Fill input columns from cartesian product
+        ## Fill input columns from cartesian product
         self.results[[*self.input_keys]] = np.fromiter(
             product(*inputvals.values()),
             dtype=np.dtype((np.float64, len(self.input_keys))),
         ).repeat(len(self.datetimes), axis=0)
-        # Fill time-dependant values
+        ## Fill time-dependant values
+        # SPECTRL2 inputs
         self.results[[*self.spectrl2_time_params.keys()]] = np.tile(
             np.asarray((*self.spectrl2_time_params.values(),)), n_inputvals_combinations
         ).T
+        # Other data of interest
+        self.results[[*self.other_time_params.keys()]] = np.tile(
+            np.asarray((*self.other_time_params.values(),)),
+            n_inputvals_combinations,
+        ).T
         self.results["datetimes"] = np.tile(self.datetimes, n_inputvals_combinations).T
-        # Calculate spectrums from the SPECTRL2 model
+        ## Calculate spectrums from the SPECTRL2 model
         spectrl2_result = spectrl2(
             **self.constant_params,
             **{col: self.results[col].to_numpy() for col in spectrl2_input_columns},
@@ -224,9 +230,9 @@ class MR_SPECTRL2_E_ratio_bench:
                 dtype=np.float64,
             )
         ## Integrate specific spectral components (W/m^2)
-        spectrl2_integ_columns = ("poa_global",)
+        spectrl2_integ_components = ("poa_global",)
         wavelength_integrator = partial(np.trapz, x=spectrl2_result["wavelength"])
-        for col_name in spectrl2_integ_columns:
+        for col_name in spectrl2_integ_components:
             self.results[col_name + "_integ"] = np.fromiter(
                 map(
                     wavelength_integrator,
@@ -339,7 +345,7 @@ class MR_SPECTRL2_E_ratio_bench:
             ax.scatter(var_values, ydata)
 
         if savefig:
-            fig.savefig(output_dir.joinpath("E_ratio_lambda.png"))
+            fig.savefig(output_dir.joinpath("E_ratio_lambda_over_E.png"))
         plt.close()
 
         self.processing_time["plot_results"] = time() - start_time
