@@ -8,7 +8,8 @@ Silicon-based PV cell technologies.
 # %% Initialization
 from Ratios_generators.spectrl2_E_ratio_bench import MR_SPECTRL2_E_ratio_bench
 from irradiance_ratios import LAMBDA0
-from Models.models_clearness_index_and_airmass_absolute import nurias_like_model
+from Models.models_clearness_index_and_airmass_absolute import mr_alike
+from utils.tools import get_all_params_names
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -18,17 +19,29 @@ import matplotlib as mpl
 
 from datetime import datetime
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Set output folder for current run based on timestamp
 base_output_folder = Path("outputs/" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S"))
 if not base_output_folder.exists():
     base_output_folder.mkdir()
+logging.basicConfig(
+    filename=base_output_folder.joinpath("log.txt"),
+    encoding="utf-8",
+    level=logging.INFO,
+)
+logger.info("Output will be written to folder: %s", base_output_folder)
 
-mpl.use("TkAgg")
+try:
+    mpl.use("TkAgg")
+except ImportError:
+    logger.warn("Matplotlib backend can't be set to TkAgg. Output will not be shown.")
 
 # Matrix of values to test
 # Atmosphere characterization required params
-N = 5
+N = 2
 spectrl2_generator_input = {
     # SPECTRL2 paper Fig 4-6: 1.0 to 2.5 cm
     "precipitable_water": np.linspace(1.0, 2.5, N),
@@ -44,15 +57,11 @@ plot_keys = ["clearness_index", "absolute_airmass", *spectrl2_generator_input.ke
 # bench instance with example time input
 bench = MR_SPECTRL2_E_ratio_bench(
     datetimes=pd.date_range(
-        "2023-11-27T00", "2023-11-28T00", freq=pd.Timedelta(minutes=15)
+        "2023-11-27T00", "2023-11-28T00", freq=pd.Timedelta(minutes=5)
     )
 )
 
 # %%
-# Test matrix & save values
-#   * For different cutoff wavelengths / materials
-#   * For different models
-
 for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     # Set output folder per run
     output_folder = base_output_folder.joinpath(f"{cutoff_lambda:04.0f}nm/")
@@ -71,16 +80,29 @@ for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     # plt.savefig(output_folder.joinpath("kt_over_time.png"))
 
     ## Fitting model
-    model = nurias_like_model  # E_λ<λ₀/E = f(Kt, am_abs) = c·exp(a(Kt-0.74)+b(AM-1.5))
+    logger.info(">>> MODEL FITTING BEGIN")
+    logger.info("    Lambda0, λ₀ = %snm", cutoff_lambda)
+    model = mr_alike  # E_λ<λ₀/E = f(Kt, am_abs) = c·exp(a(Kt-0.74)+b(am_abs-1.5))
     model_inputs = ["clearness_index", "absolute_airmass"]
+    logger.info("    Equation   : %s", model.__doc__)
+    logger.info("    Parameters : %s", get_all_params_names(model))
     p0 = (0.75, 1, 1)
+    logger.info("    Initial guess p₀ = %s", p0)
     # Get fitting data
     regressand = bench.results["poa_global_ratio"]
     regressors = bench.results[model_inputs].to_numpy().T
     # Fit model and get perr metric (see curve_fit docs)
-    # popt, pcov = curve_fit(model, regressors, regressand, nan_policy="omit", p0=p0)
-    # perr = np.sqrt(np.diag(pcov))
+    try:
+        popt, pcov = curve_fit(model, regressors, regressand, nan_policy="omit", p0=p0)
+    except RuntimeError:
+        logger.error("    curve_fit failed at finding appropiate parameters!")
+    else:
+        perr = np.sqrt(np.diag(pcov))
+        logger.info("    Optimal values = %s", popt)
+        logger.info("    Error values   = %s", perr)
+    logger.info(">>> MODEL FITTING END")
 
+    continue
     # 3D plot of original and model(s)
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ as function of " + ", ".join(model_inputs))
