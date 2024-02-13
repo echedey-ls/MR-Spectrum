@@ -293,12 +293,11 @@ class MR_SPECTRL2_E_ratio_bench:
         """
         means = self.results.filter(regex="poa_.*_ratio").mean()
         stdvs = self.results.filter(regex="poa_.*_ratio").std()
-        print("Simulation Results")
-        print(f"> Cutoff wavelength: {self.cutoff_lambda} nm")
-        print("> Mean E_λ<λ₀/E =")
-        print(means)
-        print("> Std  E_λ<λ₀/E =")
-        print(stdvs)
+        logger.info(">>> Simulation Results")
+        logger.info("  > Mean E_λ<λ₀/E =")
+        logger.info(means)
+        logger.info("  > Std  E_λ<λ₀/E =")
+        logger.info(stdvs)
 
     def plot_results(
         self, *, plot_keys: set = None, max_cols=2, savefig=True, output_dir=Path()

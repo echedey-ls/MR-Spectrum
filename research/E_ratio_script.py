@@ -6,7 +6,7 @@ Silicon-based PV cell technologies.
 """
 
 # %% Initialization
-from irradiances_ratios.ratios_generators.spectrl2_E_ratio_bench import MR_SPECTRL2_E_ratio_bench
+from irradiances_ratios.simulators.spectrl2_E_ratio_bench import MR_SPECTRL2_E_ratio_bench
 from irradiances_ratios.ratios_calculator import LAMBDA0
 from irradiances_ratios.models import mr_alike
 from utils.tools import get_all_params_names

@@ -5,22 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: plot_martin_ruiz_mismatch.py",
             "type": "debugpy",
             "request": "launch",
-            "purpose": ["debug-test"],
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": false
+            "program": "research/plot_martin_ruiz_mismatch.py",
+            "console": "integratedTerminal"
         },
         {
             "name": "Python: E ratio script",
             "type": "debugpy",
             "request": "launch",
-            "purpose": ["debug-test"],
-            "program": "./research/E_ratio_script.py",
+            "program": "research/E_ratio_script.py",
             "console": "integratedTerminal",
             "justMyCode": false
-        }
+        },
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
     ]
 }
