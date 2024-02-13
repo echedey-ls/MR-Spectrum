@@ -6,8 +6,8 @@ See :class:`MR_E_ratio` for more details.
 """
 
 # Imports
-from irradiance_ratios import E_lambda_over_E, LAMBDA0
-from tools import day_of_year
+from irradiances_ratios.ratios_calculator import E_lambda_over_E, LAMBDA0
+from utils.tools import day_of_year
 
 from pvlib.spectrum import spectrl2
 from pvlib.irradiance import (
@@ -26,6 +26,9 @@ from functools import partial
 from pathlib import Path
 from time import time
 from typing import Callable
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class MR_SPECTRL2_E_ratio_bench:
@@ -269,6 +272,10 @@ class MR_SPECTRL2_E_ratio_bench:
         )
 
         self.processing_time["simulate_from_product"] = time() - start_time
+        logger.info(
+            "Elapsed time for 'simulate_from_product': %s s",
+            self.processing_time["simulate_from_product"],
+        )
 
         self.simulation_post()
 

@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "purpose": ["debug-test"],
             "program": "${file}",
@@ -15,10 +15,10 @@
         },
         {
             "name": "Python: E ratio script",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "purpose": ["debug-test"],
-            "program": "./Irradiances_ratios/E_ratio_script.py",
+            "program": "./research/E_ratio_script.py",
             "console": "integratedTerminal",
             "justMyCode": false
         }

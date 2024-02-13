@@ -1,6 +1,6 @@
 ## User-specified files
 # Scripts outputs folder
-outputs/
+**/outputs/
 # Code sandbox folder
 sandbox/
 

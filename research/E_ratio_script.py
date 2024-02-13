@@ -6,9 +6,9 @@ Silicon-based PV cell technologies.
 """
 
 # %% Initialization
-from Ratios_generators.spectrl2_E_ratio_bench import MR_SPECTRL2_E_ratio_bench
-from irradiance_ratios import LAMBDA0
-from Models.models_clearness_index_and_airmass_absolute import mr_alike
+from irradiances_ratios.ratios_generators.spectrl2_E_ratio_bench import MR_SPECTRL2_E_ratio_bench
+from irradiances_ratios.ratios_calculator import LAMBDA0
+from irradiances_ratios.models import mr_alike
 from utils.tools import get_all_params_names
 
 import numpy as np
@@ -23,6 +23,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Code environment
 # Set output folder for current run based on timestamp
 base_output_folder = Path("outputs/" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S"))
 if not base_output_folder.exists():
@@ -39,20 +40,23 @@ try:
 except ImportError:
     logger.warn("Matplotlib backend can't be set to TkAgg. Output will not be shown.")
 
+# %%
+# Bench initialization
+# --------------------
+# Test values for the bench and define input data for the SPECTRL2 spectral model
+
 # Matrix of values to test
 # Atmosphere characterization required params
-N = 2
+N = 15
 spectrl2_generator_input = {
     # SPECTRL2 paper Fig 4-6: 1.0 to 2.5 cm
     "precipitable_water": np.linspace(1.0, 2.5, N),
     # SPECTRL2 paper Fig 4-5: 0.08 to 0.30 [unitless]
     "aerosol_turbidity_500nm": np.linspace(0.08, 0.30, N),
 }
+lambdas = np.unique(np.fromiter(LAMBDA0.values(), dtype=float))
 
 constant_params = {"surface_pressure": 1013100.0}
-
-# what do we want to plot E_λ<λ₀/E against? (None = default behaviour)
-plot_keys = ["clearness_index", "absolute_airmass", *spectrl2_generator_input.keys()]
 
 # bench instance with example time input
 bench = MR_SPECTRL2_E_ratio_bench(
@@ -61,8 +65,21 @@ bench = MR_SPECTRL2_E_ratio_bench(
     )
 )
 
+logger.info(">>> Global simulation parameters")
+logger.info("    Cutoff wavelengths, λ₀ (n = %s) = %s nm", len(lambdas), lambdas)
+logger.info("    SPECTRL2 inputs: (linspace values = %s)", N)
+for key, val in spectrl2_generator_input.items():
+    logger.info("     * '%s': %s", key, val)
+logger.info("")
+
 # %%
-for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
+# Simulation and model fitting
+# ----------------------------
+# Runs the SPECTRL2 bench and fits model(s) for each cutoff wavelength
+
+# what do we want to plot E_λ<λ₀/E against? (None = default behaviour)
+plot_keys = ["clearness_index", "absolute_airmass", *spectrl2_generator_input.keys()]
+for cutoff_lambda in lambdas:
     # Set output folder per run
     output_folder = base_output_folder.joinpath(f"{cutoff_lambda:04.0f}nm/")
     output_folder.mkdir()
@@ -73,7 +90,6 @@ for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     bench.constant_params.update(constant_params)
     bench.simulate_from_product(**spectrl2_generator_input)
     bench.plot_results(plot_keys=plot_keys, output_dir=output_folder)
-    bench.times_summary()
 
     # # test Kt calculation
     # plt.scatter(bench.results["datetimes"], bench.results["clearness_index"])
@@ -116,12 +132,3 @@ for cutoff_lambda in np.unique(np.fromiter(LAMBDA0.values(), dtype=float)):
     ax.legend()
     fig.savefig(output_folder.joinpath("Models_3D_lambda.png"))
     plt.show()
-
-# with open(
-#     "outputs/"
-#     + "model_fitting_results"
-#     + datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-#     + ".pkl",
-#     "wb",
-# ) as handle:
-#     pickle.dump(saved_results_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
