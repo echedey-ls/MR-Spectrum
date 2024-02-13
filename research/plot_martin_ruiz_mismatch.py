@@ -38,18 +38,16 @@ import pvlib
 from scipy import stats
 import pandas as pd
 
-from ..Irradiances_ratios.irradiance_ratios import G_over_G_lambda
+from irradiances_ratios.ratios_calculator import G_over_G_lambda, LAMBDA0
+from model_comparison.fitted_model_funcs import mr_alike_inst
+from model_comparison import mismatch  # port of my PR in PVLIB
 
 surface_tilt = 40
 surface_azimuth = 180  # Pointing South
 
 # Get TMY data & create location
-datapath = os.path.join(
-    pvlib.__path__[0], "data", "tmy_45.000_8.000_2005_2016.csv"
-)
-pvgis_data, _, metadata, _ = pvlib.iotools.read_pvgis_tmy(
-    datapath, map_variables=True
-)
+datapath = os.path.join(pvlib.__path__[0], "data", "tmy_45.000_8.000_2005_2016.csv")
+pvgis_data, _, metadata, _ = pvlib.iotools.read_pvgis_tmy(datapath, map_variables=True)
 site = pvlib.location.Location(
     metadata["latitude"], metadata["longitude"], altitude=metadata["elevation"]
 )
@@ -57,7 +55,7 @@ site = pvlib.location.Location(
 # Coerce a year: function above returns typical months of different years
 pvgis_data.index = [ts.replace(year=2022) for ts in pvgis_data.index]
 # Select days to show
-weather_data = pvgis_data["2022-09-03":"2022-09-06"]
+weather_data = pvgis_data["2022-09-03T04":"2022-09-03T18"]
 
 # Then calculate all we need to get the irradiance components
 solar_pos = site.get_solarposition(weather_data.index)
@@ -92,15 +90,11 @@ poa_irrad = pvlib.irradiance.poa_components(
 
 # Apply Martin & Ruiz IAM modifiers
 iam_direct = pvlib.iam.martin_ruiz(aoi)
-iam_sky_diffuse, iam_ground_diffuse = pvlib.iam.martin_ruiz_diffuse(
-    surface_tilt
-)
+iam_sky_diffuse, iam_ground_diffuse = pvlib.iam.martin_ruiz_diffuse(surface_tilt)
 
 poa_irrad["poa_direct"] = poa_irrad["poa_direct"] * iam_direct
 poa_irrad["poa_sky_diffuse"] = poa_irrad["poa_sky_diffuse"] * iam_sky_diffuse
-poa_irrad["poa_ground_diffuse"] = (
-    poa_irrad["poa_ground_diffuse"] * iam_ground_diffuse
-)
+poa_irrad["poa_ground_diffuse"] = poa_irrad["poa_ground_diffuse"] * iam_ground_diffuse
 
 # %%
 # Here come the modifiers. Let's calculate them with the airmass and clearness
@@ -116,9 +110,16 @@ clearness_index = pvlib.irradiance.clearness_index(
 )
 
 # Get the spectral mismatch modifiers
-spectral_modifiers = pvlib.spectrum.martin_ruiz(
+mr_spectrum_modifiers = mismatch.martin_ruiz(
     clearness_index, airmass_absolute, module_type="monosi"
 )
+# Calculate Ratio-corrected mismatch modifiers
+mr_spectrum_with_ratios_modifiers = mr_spectrum_modifiers.multiply(
+    mr_alike_inst(clearness_index, airmass_absolute, module_type="monosi")[
+        "poa_global"
+    ].values,
+    axis=0,
+) * G_over_G_lambda(LAMBDA0["monosi"])
 
 # %%
 # And then we can find the 3 modified components of the POA irradiance
@@ -126,12 +127,12 @@ spectral_modifiers = pvlib.spectrum.martin_ruiz(
 # Note, however, that this does not modify ``poa_global`` nor
 # ``poa_diffuse``, so we should update the dataframe afterwards.
 
-poa_irrad_modified = poa_irrad * spectral_modifiers
+poa_irrad_modified = poa_irrad * mr_spectrum_modifiers
 # Line above is equivalent to:
 # poa_irrad_modified = pd.DataFrame()
 # for component in ('poa_direct', 'poa_sky_diffuse', 'poa_ground_diffuse'):
 #     poa_irrad_modified[component] = (poa_irrad[component]
-#                                      * spectral_modifiers[component])
+#                                      * mr_spectrum_modifiers[component])
 
 # We want global modified irradiance
 poa_irrad_modified["poa_global"] = (
@@ -144,19 +145,32 @@ poa_irrad_modified["poa_global"] = (
 #     (poa_irrad_modified['poa_sky_diffuse']
 #      + poa_irrad_modified['poa_ground_diffuse'])
 
+poa_irrad_modified_with_ratios = (
+    poa_irrad * mr_spectrum_with_ratios_modifiers
+)
+
+poa_irrad_modified_with_ratios["poa_global"] = (
+    poa_irrad_modified_with_ratios["poa_direct"]
+    + poa_irrad_modified_with_ratios["poa_sky_diffuse"]
+    + poa_irrad_modified_with_ratios["poa_ground_diffuse"]
+)
+
 # %%
 # Finally, let's plot the incident vs modified global irradiance, and their
 # difference.
 
-poa_irrad_global_diff = (
-    poa_irrad["poa_global"] - poa_irrad_modified["poa_global"]
+poa_irrad_global_diff = poa_irrad["poa_global"] - poa_irrad_modified["poa_global"]
+poa_irrad_global_diff_with_ratios = (
+    poa_irrad["poa_global"] - poa_irrad_modified_with_ratios["poa_global"]
 )
 plt.figure()
 datetimes = poa_irrad.index  # common to poa_irrad_*
 plt.plot(datetimes, poa_irrad["poa_global"].to_numpy())
 plt.plot(datetimes, poa_irrad_modified["poa_global"].to_numpy())
 plt.plot(datetimes, poa_irrad_global_diff.to_numpy())
-plt.legend(["Incident", "Modified", "Difference"])
+plt.plot(datetimes, poa_irrad_modified_with_ratios["poa_global"].to_numpy())
+plt.plot(datetimes, poa_irrad_global_diff_with_ratios.to_numpy())
+plt.legend(["Incident", "Modified", "Difference", "Mod. w/ ratios", "Diff. w/ ratios"])
 plt.ylabel("POA Global irradiance [W/m²]")
 plt.grid()
 plt.show()
@@ -174,12 +188,10 @@ plt.show()
 # On the other hand, :py:func:`~pvlib.atmosphere.first_solar` needs the
 # precipitable water. We assume the standard spectrum, `1.42 cm`.
 
-# Retrieve modules and select the subset we want to work with the SAPM model
+# Retrieve modules and select the subset we want to use in the SAPM model
 module_type = "c-Si"  # Equivalent to monosi
 sandia_modules = pvlib.pvsystem.retrieve_sam(name="SandiaMod")
-modules_subset = sandia_modules.loc[
-    :, sandia_modules.loc["Material"] == module_type
-]
+modules_subset = sandia_modules.loc[:, sandia_modules.loc["Material"] == module_type]
 
 # Define typical module and get the means of the A0 to A4 parameters
 modules_aggregated = pd.DataFrame(index=("mean", "std"))
@@ -203,27 +215,28 @@ modifier_first_solar = pvlib.spectrum.spectral_factor_firstsolar(
     first_solar_pw, airmass_absolute, module_type="monosi"
 )
 poa_irrad_first_solar_mod = poa_irrad["poa_global"] * modifier_first_solar
-poa_irrad_first_solar_diff = (
-    poa_irrad["poa_global"] - poa_irrad_first_solar_mod
-)
+poa_irrad_first_solar_diff = poa_irrad["poa_global"] - poa_irrad_first_solar_mod
 
 # %%
 # Plot global irradiance difference over time
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 datetimes = poa_irrad_global_diff.index  # common to poa_irrad_*_diff*
 plt.figure()
+plt.plot(datetimes, poa_irrad_global_diff.to_numpy(), label="spectrum.martin_ruiz")
 plt.plot(
-    datetimes, poa_irrad_global_diff.to_numpy(), label="spectrum.martin_ruiz"
+    datetimes,
+    poa_irrad_global_diff_with_ratios.to_numpy(),
+    label="spectrum.martin_ruiz w/ ratios",
 )
 plt.plot(
     datetimes,
     poa_irrad_sapm_difference.to_numpy(),
-    label="spectrum.spectral_factor_firstsolar",
+    label="pvlib.spectrum.spectral_factor_sapm",
 )
 plt.plot(
     datetimes,
     poa_irrad_first_solar_diff.to_numpy(),
-    label="pvlib.spectrum.spectral_factor_sapm",
+    label="spectrum.spectral_factor_firstsolar",
 )
 plt.legend()
 plt.title("Introduced difference comparison of different models")
@@ -237,12 +250,16 @@ plt.show()
 ama = airmass_absolute.to_numpy()
 # spectrum.martin_ruiz has 3 modifiers, so we only calculate one as
 # M = S_eff / S_incident that takes into account the global effect
-martin_ruiz_agg_modifier = (
-    poa_irrad_modified["poa_global"] / poa_irrad["poa_global"]
+martin_ruiz_agg_modifier = poa_irrad_modified["poa_global"] / poa_irrad["poa_global"]
+martin_ruiz_agg_modifier_with_ratios = (
+    poa_irrad_modified_with_ratios["poa_global"] / poa_irrad["poa_global"]
 )
 plt.figure()
+plt.scatter(ama, martin_ruiz_agg_modifier.to_numpy(), label="spectrum.martin_ruiz")
 plt.scatter(
-    ama, martin_ruiz_agg_modifier.to_numpy(), label="spectrum.martin_ruiz"
+    ama,
+    martin_ruiz_agg_modifier_with_ratios.to_numpy(),
+    label="spectrum.martin_ruiz w/ ratios",
 )
 plt.scatter(
     ama,
