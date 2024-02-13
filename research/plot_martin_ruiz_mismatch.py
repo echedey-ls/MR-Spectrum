@@ -53,9 +53,9 @@ site = pvlib.location.Location(
 )
 
 # Coerce a year: function above returns typical months of different years
-pvgis_data.index = [ts.replace(year=2022) for ts in pvgis_data.index]
+pvgis_data.index = [ts.replace(year=2023) for ts in pvgis_data.index]
 # Select days to show
-weather_data = pvgis_data["2022-09-03T04":"2022-09-03T18"]
+weather_data = pvgis_data["2023-11-27T04":"2023-11-27T18"]
 
 # Then calculate all we need to get the irradiance components
 solar_pos = site.get_solarposition(weather_data.index)
@@ -113,13 +113,19 @@ clearness_index = pvlib.irradiance.clearness_index(
 mr_spectrum_modifiers = mismatch.martin_ruiz(
     clearness_index, airmass_absolute, module_type="monosi"
 )
-# Calculate Ratio-corrected mismatch modifiers
-mr_spectrum_with_ratios_modifiers = mr_spectrum_modifiers.multiply(
-    mr_alike_inst(clearness_index, airmass_absolute, module_type="monosi")[
-        "poa_global"
-    ].values,
-    axis=0,
-) * G_over_G_lambda(LAMBDA0["monosi"])
+# Calculate Ratio-corrected mismatch modifiers (use with global modelling only)
+# mr_spectrum_with_ratios_modifiers = mr_spectrum_modifiers.multiply(
+#     mr_alike_inst(clearness_index, airmass_absolute, module_type="monosi")[
+#         "poa_global"
+#     ].values,
+#     axis=0,
+# ) * G_over_G_lambda(LAMBDA0["monosi"])
+
+mr_spectrum_with_ratios_modifiers = (
+    mr_spectrum_modifiers[["poa_direct", "poa_sky_diffuse", "poa_ground_diffuse"]]
+    * mr_alike_inst(clearness_index, airmass_absolute, module_type="monosi")
+    * G_over_G_lambda(LAMBDA0["monosi"])
+)
 
 # %%
 # And then we can find the 3 modified components of the POA irradiance
@@ -145,9 +151,7 @@ poa_irrad_modified["poa_global"] = (
 #     (poa_irrad_modified['poa_sky_diffuse']
 #      + poa_irrad_modified['poa_ground_diffuse'])
 
-poa_irrad_modified_with_ratios = (
-    poa_irrad * mr_spectrum_with_ratios_modifiers
-)
+poa_irrad_modified_with_ratios = poa_irrad * mr_spectrum_with_ratios_modifiers
 
 poa_irrad_modified_with_ratios["poa_global"] = (
     poa_irrad_modified_with_ratios["poa_direct"]
@@ -222,11 +226,13 @@ poa_irrad_first_solar_diff = poa_irrad["poa_global"] - poa_irrad_first_solar_mod
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 datetimes = poa_irrad_global_diff.index  # common to poa_irrad_*_diff*
 plt.figure()
-plt.plot(datetimes, poa_irrad_global_diff.to_numpy(), label="spectrum.martin_ruiz")
+plt.plot(
+    datetimes, poa_irrad_global_diff.to_numpy(), label="mismatch.martin_ruiz wo/ ratios"
+)
 plt.plot(
     datetimes,
     poa_irrad_global_diff_with_ratios.to_numpy(),
-    label="spectrum.martin_ruiz w/ ratios",
+    label="mismatch.martin_ruiz w/ ratios",
 )
 plt.plot(
     datetimes,
@@ -236,7 +242,7 @@ plt.plot(
 plt.plot(
     datetimes,
     poa_irrad_first_solar_diff.to_numpy(),
-    label="spectrum.spectral_factor_firstsolar",
+    label="pvlib.spectrum.spectral_factor_firstsolar",
 )
 plt.legend()
 plt.title("Introduced difference comparison of different models")
@@ -255,7 +261,9 @@ martin_ruiz_agg_modifier_with_ratios = (
     poa_irrad_modified_with_ratios["poa_global"] / poa_irrad["poa_global"]
 )
 plt.figure()
-plt.scatter(ama, martin_ruiz_agg_modifier.to_numpy(), label="spectrum.martin_ruiz")
+plt.scatter(
+    ama, martin_ruiz_agg_modifier.to_numpy(), label="spectrum.martin_ruiz wo/ ratios"
+)
 plt.scatter(
     ama,
     martin_ruiz_agg_modifier_with_ratios.to_numpy(),
@@ -269,7 +277,7 @@ plt.scatter(
 plt.scatter(
     ama,
     modifier_first_solar.to_numpy(),
-    label="spectrum.spectral_factor_firstsolar",
+    label="pvlib.spectrum.spectral_factor_firstsolar",
 )
 plt.legend()
 plt.title("Introduced difference comparison of different models")
