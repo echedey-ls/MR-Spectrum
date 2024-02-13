@@ -6,7 +6,9 @@ Silicon-based PV cell technologies.
 """
 
 # %% Initialization
-from irradiances_ratios.simulators.spectrl2_E_ratio_bench import MR_SPECTRL2_E_ratio_bench
+from irradiances_ratios.simulators.spectrl2_E_ratio_bench import (
+    MR_SPECTRL2_E_ratio_bench,
+)
 from irradiances_ratios.ratios_calculator import LAMBDA0
 from irradiances_ratios.models import mr_alike
 from utils.tools import get_all_params_names
@@ -47,7 +49,7 @@ except ImportError:
 
 # Matrix of values to test
 # Atmosphere characterization required params
-N = 15
+N = 8
 spectrl2_generator_input = {
     # SPECTRL2 paper Fig 4-6: 1.0 to 2.5 cm
     "precipitable_water": np.linspace(1.0, 2.5, N),
@@ -104,18 +106,28 @@ for cutoff_lambda in lambdas:
     logger.info("    Parameters : %s", get_all_params_names(model))
     p0 = (0.75, 1, 1)
     logger.info("    Initial guess p₀ = %s", p0)
-    # Get fitting data
-    regressand = bench.results["poa_global_ratio"]
-    regressors = bench.results[model_inputs].to_numpy().T
-    # Fit model and get perr metric (see curve_fit docs)
-    try:
-        popt, pcov = curve_fit(model, regressors, regressand, nan_policy="omit", p0=p0)
-    except RuntimeError:
-        logger.error("    curve_fit failed at finding appropiate parameters!")
-    else:
-        perr = np.sqrt(np.diag(pcov))
-        logger.info("    Optimal values = %s", popt)
-        logger.info("    Error values   = %s", perr)
+    # Fit for each irradiance component
+    for irradiance in (
+        "poa_global_ratio",
+        "poa_direct_ratio",
+        "poa_sky_diffuse_ratio",
+        "poa_ground_diffuse_ratio",
+    ):
+        logger.info("  > Fitting parameters for %s", irradiance)
+        # Get fitting data
+        regressand = bench.results[irradiance]
+        regressors = bench.results[model_inputs].to_numpy().T
+        # Fit model and get perr metric (see curve_fit docs)
+        try:
+            popt, pcov = curve_fit(
+                model, regressors, regressand, nan_policy="omit", p0=p0
+            )
+        except RuntimeError:
+            logger.error("    curve_fit failed at finding appropiate parameters!")
+        else:
+            perr = np.sqrt(np.diag(pcov))
+            logger.info("    Optimal values = %s", popt)
+            logger.info("    Error values   = %s", perr)
     logger.info(">>> MODEL FITTING END")
 
     continue
