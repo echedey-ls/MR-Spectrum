@@ -30,7 +30,7 @@ def get_all_params_names(func):
     parameter_names : set
     """
     params = inspect.signature(func).parameters
-    return set(params.keys())
+    return tuple(params.keys())
 
 
 def get_required_params_names(func):
@@ -46,11 +46,11 @@ def get_required_params_names(func):
     optional_params : set
     """
     params = inspect.signature(func).parameters
-    return {
+    return (
         param_name
         for param_name, param in params.items()
         if param.default is not inspect.Parameter.empty
-    }
+    )
 
 
 def get_optional_params_names(func):
@@ -66,11 +66,11 @@ def get_optional_params_names(func):
     optional_params : set
     """
     params = inspect.signature(func).parameters
-    return {
+    return (
         param_name
         for param_name, param in params.items()
         if param.default is not inspect.Parameter.empty
-    }
+    )
 
 
 def get_keyword_params(func):
@@ -87,11 +87,11 @@ def get_keyword_params(func):
     keyword_params : set of parameter names
     """
     params = inspect.signature(func).parameters
-    return {
+    return (
         param_name
         for param_name, param in params.items()
         if param.kind is inspect.Parameter.KEYWORD_ONLY
-    }
+    )
 
 
 def has_variable_positional_arguments(func):
@@ -108,7 +108,7 @@ def has_variable_positional_arguments(func):
     """
     params = inspect.signature(func).parameters
     return any(
-        {param.kind is inspect.Parameter.VAR_KEYWORD for param in params.values()}
+        param.kind is inspect.Parameter.VAR_POSITIONAL for param in params.values()
     )
 
 
@@ -125,6 +125,4 @@ def has_variable_keyword_arguments(func):
     has_var_keyword_args : bool
     """
     params = inspect.signature(func).parameters
-    return any(
-        {param.kind is inspect.Parameter.VAR_KEYWORD for param in params.values()}
-    )
+    return any(param.kind is inspect.Parameter.VAR_KEYWORD for param in params.values())
