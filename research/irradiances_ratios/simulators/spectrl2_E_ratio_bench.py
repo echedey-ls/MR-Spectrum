@@ -300,8 +300,14 @@ class MR_SPECTRL2_E_ratio_bench:
         logger.info(stdvs)
 
     def plot_results(
-        self, *, plot_keys: set = None, max_cols=2, savefig=True, output_dir=Path()
-    ) -> plt.Figure:
+        self,
+        *,
+        components: tuple = None,
+        plot_keys: set = None,
+        max_cols=2,
+        savefig=True,
+        output_dir=Path(),
+    ) -> None:
         """
         Generate a plot of 'E fraction' vs each input variable from
         self.simulate_from_product(...) and variable names at.
@@ -310,9 +316,21 @@ class MR_SPECTRL2_E_ratio_bench:
         """
         start_time = time()  # Initialize start time of block
 
+        ## Input data validation and standardisation
         # cast output_dir to Path object if not
         if not isinstance(output_dir, Path):
             output_dir = Path(output_dir)
+
+        # cast components to list of columns of E fraction to plot
+        if components is None:  # default to add all calculated ratios
+            components = self.results.columns[
+                self.results.columns.str.match(r"poa_.*_ratio")
+            ]
+            # components = ["poa_global_ratio"]
+        elif isinstance(components, str):
+            components = [components]
+        elif not isinstance(plot_keys, list):
+            components = list(components)
 
         # cast plot_keys to set of strings to plot E fraction against
         if plot_keys is None:  # default to add relative_airmass
@@ -322,40 +340,49 @@ class MR_SPECTRL2_E_ratio_bench:
         elif not isinstance(plot_keys, list):
             plot_keys = list(plot_keys)
 
-        # assume we've got an iterable of strings
-        # make at most two columns
-        cols = min(max_cols, len(plot_keys))
-        rows = int(np.ceil(len(plot_keys) / cols))
-        fig, axs = plt.subplots(ncols=cols, nrows=rows)
+        for component in components:
+            # we've got an iterable of variable keys to plot
+            # make at most two columns
+            cols = min(max_cols, len(plot_keys))
+            rows = int(np.ceil(len(plot_keys) / cols))
+            fig, axs = plt.subplots(ncols=cols, nrows=rows)
 
-        if isinstance(axs, np.ndarray):  # to allow iteration in one dimension
-            axs = axs.flatten()
-        else:  # plt.Axes type
-            axs = [axs]  # to allow iteration of just that element
-        axs = iter(axs)
+            if isinstance(axs, np.ndarray):  # to allow iteration in one dimension
+                axs = axs.flatten()
+            else:  # plt.Axes type, 1 axes only
+                axs = [axs]  # to allow iteration of just that element
+            axs = iter(axs)
 
-        fig.suptitle(
-            r"$\frac{E_{λ<λ_0}}{E}$ as function of SPECTRL2 inputs"
-            + f"\nλ₀={self.cutoff_lambda} nm"
-        )
-        fig.set_size_inches(12, 12)
+            fig.suptitle(
+                r"$\frac{E_{λ<λ_0}}{E}$ as function of SPECTRL2 inputs"
+                + f"\nλ₀={self.cutoff_lambda} nm"
+                + f"\nComponent: {component}"
+            )
+            fig.set_size_inches(12, 12)
 
-        # get output & each of the variables
-        ydata = self.results["poa_global_ratio"]
-        xdata = self.results[plot_keys]
+            # get output & each of the variables
+            ydata = self.results[component]
+            xdata = self.results[plot_keys]
 
-        # plot output against each of the variables
-        for var_name, var_values in xdata.items():
-            ax = next(axs)
-            ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
-            ax.scatter(var_values, ydata)
+            # plot output against each of the variables
+            for var_name, var_values in xdata.items():
+                ax = next(axs)
+                ax.set_title(r"$\frac{E_{λ<λ_0}}{E}$ vs. " + var_name)
+                ax.scatter(var_values, ydata)
 
-        if savefig:
-            fig.savefig(output_dir.joinpath("E_ratio_lambda_over_E.png"))
-        plt.close()
+            if savefig:
+                fig.savefig(
+                    output_dir.joinpath(f"E_ratio_lambda_over_E_{component}.png")
+                )
+                logger.info("Figure saved for component %s", component)
+            plt.close()
 
         self.processing_time["plot_results"] = time() - start_time
-        return fig
+        logger.info(
+            "Elapsed time for 'plot_results': %s s",
+            self.processing_time["plot_results"],
+        )
+        return
 
     def plot_results_3d(self, plot_keys, ax=None):
         if len(plot_keys) != 2:
