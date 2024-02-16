@@ -237,17 +237,6 @@ class MR_SPECTRL2_E_ratio_bench:
                 ),
                 dtype=np.dtype((np.float64, 3)),
             )
-        ## Integrate specific spectral components (W/m^2)
-        spectrl2_integ_components = ("poa_global",)
-        wavelength_integrator = partial(np.trapz, x=spectrl2_result["wavelength"])
-        for col_name in spectrl2_integ_components:
-            self.results[col_name + "_integ"] = np.fromiter(
-                map(
-                    wavelength_integrator,
-                    spectrl2_result[output_name].swapaxes(1, 0),
-                ),
-                dtype=np.float64,
-            )
 
         ## Derived values contain special cases
         # -- Clearness Index (the only one for now)
@@ -262,7 +251,7 @@ class MR_SPECTRL2_E_ratio_bench:
             surface_azimuth=self.surface_azimuth,
             solar_zenith=self.results["apparent_zenith"],
             solar_azimuth=solar_azimuth,
-            poa_global=self.results["poa_global_integ"],
+            poa_global=self.results["poa_global_full"],
             dni_extra=extra_radiation,
             airmass=self.results["relative_airmass"],
             albedo=self.constant_params["ground_albedo"],
