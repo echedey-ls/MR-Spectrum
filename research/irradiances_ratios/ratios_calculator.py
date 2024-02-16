@@ -88,11 +88,20 @@ def G_over_G_lambda(cutoff_nm: float):
     return G_complete_integ / G_usable_integ
 
 
-def E_lambda_over_E(cutoff_nm: float, wavelengths: np.ndarray, irradiances: np.ndarray):
+def spectrum_integrals_and_ratio(
+    cutoff_nm: float, wavelengths: np.ndarray, irradiances: np.ndarray
+) -> tuple[float, float, float]:
     """
-    Same as above, but for the :math:`\frac{E_{\lambda_0 < \lambda}}{E}` ratio.
+    Returns
+    -------
+        E_complete: float
+            Full integral of the spectrum.
+        E_usable: float
+            Integral of the spectrum for :math:`\lambda \in [\lambda_{min}, \lambda_0]`
+        E_ratio: float, less than one
+            As :math:`\frac{E_{\lambda_0 < \lambda}}{E}`.
     """  # E_λ<λ₀/E
     E_complete_integ, E_usable_integ = calc_irrad_integrals(
         wavelengths, irradiances, cutoff_nm
     )
-    return E_usable_integ / E_complete_integ
+    return E_complete_integ, E_usable_integ, E_usable_integ / E_complete_integ

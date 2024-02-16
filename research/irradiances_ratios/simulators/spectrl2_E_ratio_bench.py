@@ -6,7 +6,7 @@ See :class:`MR_E_ratio` for more details.
 """
 
 # Imports
-from irradiances_ratios.ratios_calculator import E_lambda_over_E, LAMBDA0
+from irradiances_ratios.ratios_calculator import spectrum_integrals_and_ratio, LAMBDA0
 from utils.tools import day_of_year
 
 from pvlib.spectrum import spectrl2
@@ -220,17 +220,22 @@ class MR_SPECTRL2_E_ratio_bench:
         ## Integrate and calculate spectral ratios (unitless)
         # Following partial func. only takes the spectral irradiance as argument
         wrapped_E_lambda_over_E = partial(
-            E_lambda_over_E,
+            spectrum_integrals_and_ratio,
             self.cutoff_lambda,
             spectrl2_result["wavelength"],
         )
+
+        def _append_component_suffixes(name):
+            return [name + suffix for suffix in ("_full", "_usable", "_ratio")]
+
         for output_name in spectrl2_output_columns:
-            self.results[output_name + "_ratio"] = np.fromiter(
+            output_columns = _append_component_suffixes(output_name)
+            self.results[output_columns] = np.fromiter(
                 map(
                     wrapped_E_lambda_over_E,
                     spectrl2_result[output_name].swapaxes(1, 0),
                 ),
-                dtype=np.float64,
+                dtype=np.dtype((np.float64, 3)),
             )
         ## Integrate specific spectral components (W/m^2)
         spectrl2_integ_components = ("poa_global",)
