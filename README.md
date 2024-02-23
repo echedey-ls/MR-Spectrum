@@ -1,8 +1,12 @@
-Modelling and characterization of usable irradiance
-===================================================
+N. Martin & J. M. Ruiz Spectral Mismatch Factor
+===============================================
 
-To be used with N. Martín and J. M. Ruiz spectral mismatch factor. From Nuria's thesis
-3.2b equation:
+
+
+Modelling and characterization of usable irradiance
+---------------------------------------------------
+
+From Nuria's thesis 3.2b equation:
 
 ```math
 PS = 1 - \frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}\frac{E_{\lambda<\lambda_0}}{\bar{G}_{\lambda<\lambda_0}}\frac{\bar{G}}{E}
@@ -32,7 +36,7 @@ $`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}`$ is already modelled in
 
 
 Available workflows
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 1. ``Irradiance_ratios/E_ratio_script.py``: plots $`\frac{E_{\lambda<\lambda_0}}{E}`$
 against SPECTRL2 inputs and time-dependant inputs.
