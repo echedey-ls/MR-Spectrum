@@ -44,13 +44,12 @@ def calc_irrad_integrals(
         :math:`E_{\lambda_0 < \lambda}`
     """
     # TODO: optimize with numba? Currently can't do trapz(non-uniform dimensions)
-    # TODO: check behaviour -> maybe should be prev or next index?
-    cutoff_lambda_index = np.searchsorted(wavelengths, cutoff_wavelength)
+    cutoff_lambda_index = np.searchsorted(wavelengths, cutoff_wavelength, side='right')
     E_lambda_le = np.trapz(
         irradiances[:cutoff_lambda_index], wavelengths[:cutoff_lambda_index]
     )  # E_{\lambda_0 <= \lambda}
     E_lambda_gt = np.trapz(
-        irradiances[cutoff_lambda_index:], wavelengths[cutoff_lambda_index:]
+        irradiances[cutoff_lambda_index-1:], wavelengths[cutoff_lambda_index-1:]
     )  # E_{\lambda_0 > \lambda}
     return (E_lambda_le + E_lambda_gt, E_lambda_le)
 
