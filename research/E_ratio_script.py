@@ -91,7 +91,9 @@ for cutoff_lambda in lambdas:
 
     bench.constant_params.update(constant_params)
     bench.simulate_from_product(**spectrl2_generator_input)
-    bench.plot_results(plot_keys=plot_keys, output_dir=output_folder)
+    bench.plot_ratios_vs_parameters(plot_keys=plot_keys, output_dir=output_folder)
+    bench.plot_ratios_vs_components(max_cols=2, output_dir=output_folder)
+    bench.plot_usable_vs_full_integrals(max_cols=2, output_dir=output_folder)
 
     # # test Kt calculation
     # plt.scatter(bench.results["datetimes"], bench.results["clearness_index"])

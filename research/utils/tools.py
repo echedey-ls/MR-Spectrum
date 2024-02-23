@@ -126,3 +126,16 @@ def has_variable_keyword_arguments(func):
     """
     params = inspect.signature(func).parameters
     return any(param.kind is inspect.Parameter.VAR_KEYWORD for param in params.values())
+
+
+COMPONENTS_TRANSLATION_DICT: dict = {
+    "global": "G",
+    "direct": "B",
+    "sky": "D",
+    "ground": "A"
+}
+
+def component_name_to_character(name: str):
+    for comp_name, comp_char in COMPONENTS_TRANSLATION_DICT.items():
+        if comp_name in name:
+            return comp_char

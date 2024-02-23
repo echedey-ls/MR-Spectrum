@@ -7,7 +7,7 @@ See :class:`MR_E_ratio` for more details.
 
 # Imports
 from irradiances_ratios.ratios_calculator import spectrum_integrals_and_ratio, LAMBDA0
-from utils.tools import day_of_year
+from utils.tools import day_of_year, component_name_to_character
 
 from pvlib.spectrum import spectrl2
 from pvlib.irradiance import (
@@ -26,9 +26,11 @@ from functools import partial
 from pathlib import Path
 from time import time
 from typing import Callable
+from string import Template
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class MR_SPECTRL2_E_ratio_bench:
@@ -181,9 +183,9 @@ class MR_SPECTRL2_E_ratio_bench:
         derived_values_columns = ("clearness_index",)
         # The outputs
         spectrl2_output_columns = (  # TODO: re-evaluate what to do prior to simulation
+            "poa_direct",
             "poa_sky_diffuse",
             "poa_ground_diffuse",
-            "poa_direct",
             "poa_global",
         )
         n_inputvals_combinations = np.prod([len(array) for array in inputvals.values()])
@@ -293,7 +295,7 @@ class MR_SPECTRL2_E_ratio_bench:
         logger.info("  > Std  E_λ<λ₀/E =")
         logger.info(stdvs)
 
-    def plot_results(
+    def plot_ratios_vs_parameters(
         self,
         *,
         components: tuple = None,
@@ -365,18 +367,140 @@ class MR_SPECTRL2_E_ratio_bench:
                 ax.scatter(var_values, ydata)
 
             if savefig:
-                fig.savefig(
-                    output_dir.joinpath(f"E_ratio_lambda_over_E_{component}.png")
-                )
+                fig.savefig(output_dir.joinpath(f"E_ratio_{component}.png"))
                 logger.info("Figure saved for component %s", component)
             plt.close()
 
-        self.processing_time["plot_results"] = time() - start_time
+        self.processing_time["plot_ratios_vs_parameters"] = time() - start_time
         logger.info(
-            "Elapsed time for 'plot_results': %s s",
-            self.processing_time["plot_results"],
+            "Elapsed time for 'plot_ratios_vs_parameters': %s s",
+            self.processing_time["plot_ratios_vs_parameters"],
         )
-        return
+
+    def plot_ratios_vs_components(
+        self,
+        *,
+        components: tuple = None,
+        max_cols=4,
+        savefig=True,
+        output_dir=Path(),
+    ) -> None:
+        """
+        Generate a plot of each component ratio vs each incident irradiance from
+        self.simulate_from_product(...) results.
+        """
+        start_time = time()  # Initialize start time of block
+
+        ## Input data validation and standardisation
+        # cast output_dir to Path object if not
+        if not isinstance(output_dir, Path):
+            output_dir = Path(output_dir)
+
+        components: tuple[str, ...] = self.results.columns[
+            self.results.columns.str.match(r"poa_.*_ratio")
+        ]
+
+        # set figure columns and rows
+        cols = min(max_cols, len(components))
+        rows = int(np.ceil(len(components) / cols))
+        fig, axs = plt.subplots(ncols=cols, nrows=rows)
+
+        if isinstance(axs, np.ndarray):  # to allow iteration in one dimension
+            axs = axs.flatten()
+        else:  # plt.Axes type, 1 axes only
+            axs = [axs]  # to allow iteration of just that element
+        fig.suptitle(
+            r"$\frac{E_{λ<λ_0}}{E}$ ratios vs incident components"
+            + f"\nλ₀ = {self.cutoff_lambda} nm"
+        )
+        fig.set_size_inches(12, 12)
+
+        # Subplots title template
+        title_template = Template(r"$$\frac{${symbol}_{λ<λ_0}}{$symbol}$$ vs. $symbol")
+        for component, ax in zip(components, axs):
+            # get output & each of the variables
+            full_component_integral_name = component.rstrip("ratio") + "full"
+            ydata = self.results[component]
+            xdata = self.results[full_component_integral_name]
+
+            # plot output against each of the variables
+            component_symbol = component_name_to_character(component)
+            ax.set_title(title_template.substitute(symbol=component_symbol))
+            ax.scatter(xdata, ydata)
+
+        if savefig:
+            fig.savefig(output_dir.joinpath("Ratios_vs_incident_components.png"))
+            logger.info("Ratios vs. Incident Components Figure saved")
+        plt.close()
+
+        self.processing_time["plot_ratios_vs_components"] = time() - start_time
+        logger.info(
+            "Elapsed time for 'plot_ratios_vs_components': %s s",
+            self.processing_time["plot_ratios_vs_components"],
+        )
+
+
+    def plot_usable_vs_full_integrals(
+        self,
+        *,
+        components: tuple = None,
+        max_cols=4,
+        savefig=True,
+        output_dir=Path(),
+    ) -> None:
+        """
+        Generate a plot of each component ratio vs each incident irradiance from
+        self.simulate_from_product(...) results.
+        """
+        start_time = time()  # Initialize start time of block
+
+        ## Input data validation and standardisation
+        # cast output_dir to Path object if not
+        if not isinstance(output_dir, Path):
+            output_dir = Path(output_dir)
+
+        components: tuple[str, ...] = self.results.columns[
+            self.results.columns.str.match(r"poa_.*_usable")
+        ]
+
+        # set figure columns and rows
+        cols = min(max_cols, len(components))
+        rows = int(np.ceil(len(components) / cols))
+        fig, axs = plt.subplots(ncols=cols, nrows=rows)
+
+        if isinstance(axs, np.ndarray):  # to allow iteration in one dimension
+            axs = axs.flatten()
+        else:  # plt.Axes type, 1 axes only
+            axs = [axs]  # to allow iteration of just that element
+        fig.suptitle(
+            r"$E_{λ<λ_0}$ as a function of {E}"
+            + f"\nλ₀ = {self.cutoff_lambda} nm"
+        )
+        fig.set_size_inches(12, 12)
+
+        # Subplots title template
+        title_template = Template(r"$$${symbol}_{λ<λ_0}$$ vs. $$$symbol$$")
+        for component, ax in zip(components, axs):
+            # get output & each of the variables
+            full_component_integral_name = component.rstrip("usable") + "full"
+            ydata = self.results[component]
+            xdata = self.results[full_component_integral_name]
+
+            # plot output against each of the variables
+            component_symbol = component_name_to_character(component)
+            ax.set_title(title_template.substitute(symbol=component_symbol))
+            ax.scatter(xdata, ydata)
+
+        if savefig:
+            fig.savefig(output_dir.joinpath("Usable_vs_incident_components.png"))
+            logger.info("Usable vs. Incident Components Figure saved")
+        plt.close()
+
+        self.processing_time["plot_usable_vs_full_integrals"] = time() - start_time
+        logger.info(
+            "Elapsed time for 'plot_usable_vs_full_integrals': %s s",
+            self.processing_time["plot_usable_vs_full_integrals"],
+        )
 
     def plot_results_3d(self, plot_keys, ax=None):
         if len(plot_keys) != 2:
