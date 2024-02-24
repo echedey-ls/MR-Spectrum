@@ -1,4 +1,4 @@
-from research_src.irradiances_ratios.ratios_calculator import calc_irrad_integrals
+from research.irradiances_ratios.ratios_calculator import calc_irrad_integrals
 
 import numpy as np
 from numpy.testing import assert_approx_equal

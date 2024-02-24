@@ -1,7 +1,10 @@
 N. Martin & J. M. Ruiz Spectral Mismatch Factor
 ===============================================
 
+In this repo I am developing a Spectral Mismatch Factor for `a-Si`, `c-Si` and `m-Si` PV
+modules, following a procedure developed by Nuria Martín & José María Ruiz.
 
+The kind of analysis is provided in Nuria's PhD thesis.
 
 Modelling and characterization of usable irradiance
 ---------------------------------------------------
@@ -34,12 +37,25 @@ Also, ratio $`\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}`$ is available through
 $`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}`$ is already modelled in
 [[1]](#references).
 
+How to use and develop this repo
+--------------------------------
+
+1. Run `pip -m install -e .[dev]` to install the common dependency for the `scripts/` folder.
+    It's a package that groups almost all the important _backend_ computations.
+    The editable switch and the `[dev]` dependency are optional of course;
+    remove them if you don't plan on doing any changes inside the `research/` folder.
+2. Run `pre-commit install` to add the `pre-commit` hooks.
+    The most important feature is formatting and linting with `ruff` on each commit.
+3. You are now set up to run any of the workflows in the `scripts/` folder.
 
 Available workflows
 ^^^^^^^^^^^^^^^^^^^
 
-1. ``Irradiance_ratios/E_ratio_script.py``: plots $`\frac{E_{\lambda<\lambda_0}}{E}`$
-against SPECTRL2 inputs and time-dependant inputs.
+1. ``scripts/E_ratio_script.py``: main model development happens here
+    * Plots $`\frac{E_{\lambda<\lambda_0}}{E}`$ against SPECTRL2 inputs and other outputs.
+    * Plots each usable part vs. full integral of each component.
+2. ``plot_martin_ruiz_mismatch.py``: allows testing of the developed model against
+    SAPM and First Solar models. Find these functions at ``pvlib.spectrum.mismatch``.
 
 References
 ----------

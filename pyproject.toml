@@ -1,21 +1,22 @@
-[build-system]
-requires = ["setuptools >= 61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["research_src"]
-
 [project]
 name = "research"
 version = "0.1.0"
 requires-python = ">= 3.11"
 dependencies = ["pvlib", "matplotlib", "scipy", "numpy", "pandas"]
 authors = [
-  {name = "Echedey Luis", email = "echedey.luis.alvarez.2002+foss@gmail.com"},
+  { name = "Echedey Luis", email = "echedey.luis.alvarez.2002+foss@gmail.com" },
 ]
+dynamic = ["readme"]
 
 [project.optional-dependencies]
-dev = [
-    "ruff"
-]
+dev = ["ruff", "pre-commit", "pytest"]
 
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["research"]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.txt"], content-type = "text/x-rst"}

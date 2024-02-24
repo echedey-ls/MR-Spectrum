@@ -8,14 +8,14 @@
             "name": "Python: plot_martin_ruiz_mismatch.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "research/plot_martin_ruiz_mismatch.py",
+            "program": "scripts/plot_martin_ruiz_mismatch.py",
             "console": "integratedTerminal"
         },
         {
             "name": "Python: E ratio script",
             "type": "debugpy",
             "request": "launch",
-            "program": "research/E_ratio_script.py",
+            "program": "scripts/E_ratio_script.py",
             "console": "integratedTerminal",
             "justMyCode": false
         },

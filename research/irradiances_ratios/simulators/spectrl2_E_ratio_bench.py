@@ -6,8 +6,11 @@ See :class:`MR_E_ratio` for more details.
 """
 
 # Imports
-from irradiances_ratios.ratios_calculator import spectrum_integrals_and_ratio, LAMBDA0
-from utils.tools import day_of_year, component_name_to_character
+from research.irradiances_ratios.ratios_calculator import (
+    spectrum_integrals_and_ratio,
+    LAMBDA0,
+)
+from research.utils import day_of_year, component_name_to_character
 
 from pvlib.spectrum import spectrl2
 from pvlib.irradiance import (
@@ -439,7 +442,6 @@ class MR_SPECTRL2_E_ratio_bench:
             self.processing_time["plot_ratios_vs_components"],
         )
 
-
     def plot_usable_vs_full_integrals(
         self,
         *,
@@ -473,8 +475,7 @@ class MR_SPECTRL2_E_ratio_bench:
         else:  # plt.Axes type, 1 axes only
             axs = [axs]  # to allow iteration of just that element
         fig.suptitle(
-            r"$E_{λ<λ_0}$ as a function of {E}"
-            + f"\nλ₀ = {self.cutoff_lambda} nm"
+            r"$E_{λ<λ_0}$ as a function of {E}" + f"\nλ₀ = {self.cutoff_lambda} nm"
         )
         fig.set_size_inches(12, 12)
 
