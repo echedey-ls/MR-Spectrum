@@ -1,5 +1,0 @@
-+ MR spectrum PVLIB's PR
-+ Regresión y generación modelos de más a menos variables
-+ Cambiar forma de self.results:
-    * Todo en columnas
-    * Añadir las tres componentes que conforman la salida poa_global de SPECTRL2

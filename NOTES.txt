@@ -1,1 +1,3 @@
-+ Modelo SMARTS de NREL
+Checkear:
++ Modelo SMARTS
++ Modelo FARMS-NIT
