@@ -30,4 +30,4 @@ repos:
           (?x)^(
             scripts/plot_martin_ruiz_mismatch.py
           )
-        args: [ --line-length 79, --max-line-length 79]
+        args: ['--config', "line-length = 79"]
