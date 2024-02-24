@@ -4,7 +4,8 @@ N. Martin & J. M. Ruiz Spectral Mismatch Factor
 In this repo I am developing a Spectral Mismatch Factor for `a-Si`, `c-Si` and `m-Si` PV
 modules, following a procedure developed by Nuria Martín & José María Ruiz.
 
-The kind of analysis is provided in Nuria's PhD thesis.
+This analysis is inspired and mimics most of the workflow of Nuria's PhD thesis, but the
+spectral data is get from spectrum simulators.
 
 Modelling and characterization of usable irradiance
 ---------------------------------------------------
