@@ -26,7 +26,7 @@ where:
 
 $\lambda_0$ is what I call the _cutoff wavelength_, the wavelength until a PV material has
 at least some effectiveness at converting irradiance into current.
-For example, for `c-Si` it is around $1100 nm$` and for `a-Si`, around $800 nm$.
+For example, for `c-Si` and `m-Si` it is around $1100 nm$ and for `a-Si`, around $800 nm$.
 See *Figure 3* in [[1]](#references).
 
 This means the ratio $\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}$ is constant for any
