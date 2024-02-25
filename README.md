@@ -12,33 +12,33 @@ Modelling and characterization of usable irradiance
 
 From Nuria's thesis 3.2b equation:
 
-.. math::
-
+```math
     PS = 1 - \frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}\frac{E_{\lambda<\lambda_0}}{\bar{G}_{\lambda<\lambda_0}}\frac{\bar{G}}{E}
+```
 
 where:
 
- * :math:`E = \int_{\lambda_{min}}^{+\infty} E(\lambda) d\lambda`
- * :math:`E_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} E(\lambda) d\lambda`
- * :math:`\bar{G} = \int_{\lambda_{min}}^{+\infty} G(\lambda) d\lambda`
- * :math:`\bar{G}_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} G(\lambda) d\lambda`
- * :math:`G` represents the standard (STC) spectrum
+ * $E = \int_{\lambda_{min}}^{+\infty} E(\lambda) d\lambda$
+ * $E_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} E(\lambda) d\lambda$
+ * $\bar{G} = \int_{\lambda_{min}}^{+\infty} G(\lambda) d\lambda$
+ * $\bar{G}_{\lambda<\lambda_0} = \int_{\lambda_{min}}^{\lambda_0} G(\lambda) d\lambda$
+ * $G$ represents the standard (STC) spectrum
 
-:math:`\lambda_0` is what I call the _cutoff wavelength_, the wavelength until a PV material has
+$\lambda_0$ is what I call the _cutoff wavelength_, the wavelength until a PV material has
 at least some effectiveness at converting irradiance into current.
-For example, for `c-Si` it is around :math:`1100 nm`` and for `a-Si`, around :math:`800 nm`.
+For example, for `c-Si` it is around $1100 nm$` and for `a-Si`, around $800 nm$.
 See *Figure 3* in [[1]](#references).
 
-This means the ratio :math:`\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}` is constant for any
-:math:`\lambda_0`. It is available through ``G_over_G_lambda(cutoff_wavelength)`` in
+This means the ratio $\frac{\bar{G}}{\bar{G}_{\lambda<\lambda_0}}$ is constant for any
+$\lambda_0$. It is available through ``G_over_G_lambda(cutoff_wavelength)`` in
 ``research/irradiances_ratios/ratios_calculator.py``.
 
 In this repo, I will be working on a first modelling of
-:math:`\frac{E_{\lambda<\lambda_0}}{E}`, which is the ratio of usable spectrum against
+$\frac{E_{\lambda<\lambda_0}}{E}$, which is the ratio of usable spectrum against
 all incident spectrum. By *usable* we mean the wavelength until a PV material has
 at least some effectiveness at converting irradiance into current.
 
-:math:`\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}` is already modelled in
+$\frac{S_{efE(\lambda)}}{S_{ef\bar{G}(\lambda)}}$ is already modelled in
 [[1]](#references).
 
 How to use and develop this repo
@@ -53,10 +53,10 @@ How to use and develop this repo
 3. You are now set up to run any of the workflows in the `scripts/` folder.
 
 Available workflows
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 1. ``scripts/E_ratio_script.py``: main model development happens here
-    * Plots :math:`\frac{E_{\lambda<\lambda_0}}{E}` against SPECTRL2 inputs and other outputs.
+    * Plots $\frac{E_{\lambda<\lambda_0}}{E}$ against SPECTRL2 inputs and other outputs.
     * Plots each usable part vs. full integral of each component.
 2. ``scripts/plot_martin_ruiz_mismatch.py``: allows testing of the developed model against
     SAPM and First Solar models. Find these functions at ``pvlib.spectrum.mismatch``.
