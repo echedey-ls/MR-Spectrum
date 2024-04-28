@@ -1,4 +1,4 @@
-from research.pvlib_ports import martin_ruiz
+from research.pvlib_ports import martin_ruiz, get_spectral_response_of_material
 
 import numpy as np
 from numpy.testing import assert_approx_equal, assert_allclose
@@ -173,3 +173,26 @@ def test_martin_ruiz_mm_error_too_many_arguments(martin_ruiz_mismatch_data):
         _ = martin_ruiz(clearness_index, airmass_absolute,
                                  module_type='asi',
                                  model_parameters=model_parameters)
+
+
+def test_get_spectral_response_of_material():
+    # test that the sr curves are read correctly
+    sr = get_spectral_response_of_material(material="all")
+    assert len(sr) == 181
+    pd.testing.assert_series_equal(
+        sr.sum(),
+        pd.Series({"polysi": 116.32, "monosi": 115.51, "hit": 110.07}),
+        atol=1e-2,
+    )
+
+    # test raise error if material not in dataset
+    with pytest.raises(ValueError, match="Material '.*' not found in dataset"):
+        sr = get_spectral_response_of_material(
+            material="not in dataset"
+        )
+
+    # test correct interpolation
+    material, wavelength = "polysi", [270, 850, 900, 950, 1200]
+    expected = [0.0, 0.974667, 0.995869, 0.988224, 0.0]
+    result = get_spectral_response_of_material(material, wavelength)
+    assert_allclose(result, expected, atol=1e-6)
