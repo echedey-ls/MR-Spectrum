@@ -92,6 +92,8 @@ for cutoff_lambda in lambdas:
     bench.constant_params.update(constant_params)
     bench.simulate_from_product(**spectrl2_generator_input)
     bench.plot_ratios_vs_parameters(plot_keys=plot_keys, output_dir=output_folder)
+    # bench.results.to_csv(output_folder.joinpath("results.csv"))
+
     bench.plot_ratios_vs_components(max_cols=2, output_dir=output_folder)
     bench.plot_usable_vs_full_integrals(max_cols=2, output_dir=output_folder)
 

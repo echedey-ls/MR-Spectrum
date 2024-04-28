@@ -90,7 +90,7 @@ def G_over_G_lambda(cutoff_nm: float):
 def spectrum_integrals_and_ratio(
     cutoff_nm: float, wavelengths: np.ndarray, irradiances: np.ndarray
 ) -> tuple[float, float, float]:
-    """
+    r"""
     Returns
     -------
         E_complete: float

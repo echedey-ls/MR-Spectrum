@@ -1,6 +1,6 @@
 """Instances of fitted models"""
 
-from irradiances_ratios.ratios_calculator import LAMBDA0
+from research.irradiances_ratios.ratios_calculator import LAMBDA0
 
 import numpy as np
 import pandas as pd
