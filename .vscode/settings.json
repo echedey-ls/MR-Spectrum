@@ -1,0 +1,11 @@
+{
+    "cSpell.words": [
+        "SAPM",
+        "SPECTRL"
+    ],
+    "python.testing.pytestArgs": [
+        "research"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+}
